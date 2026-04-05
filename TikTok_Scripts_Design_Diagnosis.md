@@ -10,7 +10,7 @@
 ## SCRIPT 1: "The Gray Zone" — Brown Town
 
 **[NICKNAME & SCORE]**
-- Property: Brown Town
+- Property: Brown TownNNNNNNNNN
 - Nickname: "The Gray Zone"
 - Vitality Score: 51/100 (D)
 - Problem: Monochromatic Institutional Cold
