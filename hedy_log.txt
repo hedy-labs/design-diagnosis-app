@@ -1,0 +1,7 @@
+nohup: ignoring input
+✅ Integration layer initialized
+   Polite-pacing: 5s
+   Queue status: {'total_queued': 0, 'pending': 0, 'cooling_down': 0, 'failed': 0, 'requests': []}
+
+Ready to wrap vitality_score.analyse_listing()
+Usage: report = analyse_listing_managed(...)
