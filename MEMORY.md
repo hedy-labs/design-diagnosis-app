@@ -196,15 +196,6 @@ Rachel's vision: parallel app for home sellers (not Airbnb hosts). Home sellers 
 **2-year vision:** Year 1: Vitality $20K–$50K; Year 2: Vitality $100K–$200K + StageMate $30K–$50K + virtual staging service $20K–$50K.
 
 ## GitHub Setup (2026-03-30)
-<<<<<<< HEAD
-Rachel created GitHub account (friend Gemini suggested). Purpose: cloud backup + version control + collaboration for code.
-
-**What to do:** Create repo `vitality-score-app` (public, MIT license) → upload files via web interface → share with developer.
-
-**Key concepts:** Commits = save versions, branches = safe testing, push/pull = upload/download changes.
-
-Full setup guide: PROJECT/GITHUB_SETUP.md
-=======
 Rachel created GitHub account (friend Gemini suggested). Purpose: cloud backup + version control + collaboration for code. Files now synced to GitHub. Using GitHub Desktop for future syncs (secure, no credential storage in my environment).
 
 ## Product Branding (2026-04-01)
@@ -656,4 +647,3 @@ Three critical photo audit rules for Design Diagnosis:
 - "The $300 that increased bookings 20%"
 
 **File:** RACHEL_PHOTO_STRATEGY.md
->>>>>>> master

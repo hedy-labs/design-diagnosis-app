@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Design Diagnosis - Free Vitality Score for your Airbnb listing. AI-powered interior design analysis.">
+    <title>Design Diagnosis - Airbnb Interior Analysis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #333;
+            background: linear-gradient(135deg, #faf8f3 0%, #f5f0e8 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            padding: 1.5rem 2rem;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #B8785A;
+        }
+
+        .logo-subtitle {
+            font-size: 0.65rem;
+            color: #7d8a6b;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .badge {
+            background: #f0e6d2;
+            color: #B8785A;
+            padding: 0.4rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Main Content */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem 2rem;
+            max-width: 1000px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .hero h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(2.5rem, 8vw, 4rem);
+            font-weight: 700;
+            color: #2c2c2c;
+            margin-bottom: 0.5rem;
+            line-height: 1.1;
+        }
+
+        .hero h2 {
+            font-size: clamp(1.25rem, 4vw, 1.75rem);
+            font-weight: 500;
+            color: #7d8a6b;
+            margin-bottom: 1rem;
+            font-family: 'Playfair Display', serif;
+        }
+
+        .hero p {
+            font-size: 1rem;
+            color: #555;
+            line-height: 1.6;
+            max-width: 500px;
+            margin: 0 auto 2rem;
+        }
+
+        /* Email Signup */
+        .signup-section {
+            margin-bottom: 3rem;
+        }
+
+        .signup-form {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .signup-form input {
+            padding: 0.875rem 1.25rem;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            flex: 1;
+            min-width: 250px;
+            transition: all 0.3s ease;
+        }
+
+        .signup-form input:focus {
+            outline: none;
+            border-color: #B8785A;
+            box-shadow: 0 0 0 3px rgba(184, 120, 90, 0.1);
+        }
+
+        .signup-form button {
+            padding: 0.875rem 2rem;
+            background: #B8785A;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .signup-form button:hover {
+            background: #a06a48;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(184, 120, 90, 0.3);
+        }
+
+        .signup-form button:active {
+            transform: translateY(0);
+        }
+
+        .success-message {
+            display: none;
+            color: #7d8a6b;
+            font-weight: 500;
+            margin-top: 1rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Features Grid */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+            width: 100%;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 2rem;
+            border-radius: 8px;
+            border-left: 4px solid #B8785A;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            transform: translateY(-4px);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.25rem;
+            color: #2c2c2c;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card p {
+            font-size: 0.95rem;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        /* Social Links */
+        .social-section {
+            margin: 2rem 0;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .social-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: rgba(184, 120, 90, 0.1);
+            color: #B8785A;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .social-link:hover {
+            background: #B8785A;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* Footer */
+        footer {
+            background: #2c2c2c;
+            color: #ccc;
+            text-align: center;
+            padding: 2rem;
+            margin-top: auto;
+        }
+
+        footer p {
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        footer .launch-date {
+            color: #B8785A;
+            font-weight: 600;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            main {
+                padding: 2rem 1.5rem;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero h2 {
+                font-size: 1.25rem;
+            }
+
+            .signup-form {
+                flex-direction: column;
+            }
+
+            .signup-form input,
+            .signup-form button {
+                min-width: 100%;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Accessibility */
+        a:focus {
+            outline: 2px solid #B8785A;
+            outline-offset: 2px;
+        }
+
+        button:focus-visible {
+            outline: 2px solid #B8785A;
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <div class="logo">
+                <div>
+                    <div class="logo-text">Design Diagnosis</div>
+                    <div class="logo-subtitle">Interior Analysis</div>
+                </div>
+            </div>
+            <div class="badge">Coming Soon</div>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <h1>Design Diagnosis</h1>
+            <h2>Free Vitality Score for Your Airbnb</h2>
+            <p>AI-powered interior design analysis. Get actionable insights and shopping lists to optimize your listing for maximum bookings and revenue.</p>
+        </section>
+
+        <section class="signup-section">
+            <form class="signup-form" id="signupForm">
+                <input 
+                    type="email" 
+                    placeholder="Enter your email" 
+                    required
+                    aria-label="Email address for launch notification"
+                >
+                <button type="submit">Notify Me</button>
+            </form>
+            <p class="success-message" id="successMessage">✓ Thanks! We'll notify you when Design Diagnosis launches.</p>
+        </section>
+
+        <section class="features">
+            <div class="feature-card">
+                <div class="feature-icon">📸</div>
+                <h3>Photo Analysis</h3>
+                <p>Upload your listing photos and get instant AI-powered design feedback based on interior design expertise.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Vitality Score</h3>
+                <p>Get a 0–100 score that predicts guest satisfaction and booking potential based on design quality.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🛋️</div>
+                <h3>Shopping Lists</h3>
+                <p>Curated furniture and decor recommendations with affiliate links to help you boost your score.</p>
+            </div>
+        </section>
+
+        <section class="social-section">
+            <p style="margin-bottom: 1rem; color: #666;">Follow for design insights and tips</p>
+            <div class="social-links">
+                <a href="https://www.tiktok.com/@roomsbyrachel" class="social-link" target="_blank" rel="noopener noreferrer">
+                    TikTok @roomsbyrachel
+                </a>
+                <a href="https://www.instagram.com/roomsbyrachel" class="social-link" target="_blank" rel="noopener noreferrer">
+                    Instagram @roomsbyrachel
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Design Diagnosis - Launching <span class="launch-date">Week of April 6, 2026</span></p>
+        <p>Join us on TikTok <strong>@roomsbyrachel</strong> for design tips and listing reviews</p>
+    </footer>
+
+    <script>
+        const form = document.getElementById('signupForm');
+        const successMessage = document.getElementById('successMessage');
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Validate email
+            const emailInput = form.querySelector('input[type="email"]');
+            if (!emailInput.value) {
+                alert('Please enter your email');
+                return;
+            }
+
+            // Show success message
+            form.style.display = 'none';
+            successMessage.style.display = 'block';
+
+            // Log email (you can later integrate with email service)
+            console.log('Email signup:', emailInput.value);
+            
+            // Reset after 3 seconds (optional)
+            setTimeout(() => {
+                form.reset();
+                form.style.display = 'flex';
+                successMessage.style.display = 'none';
+            }, 3000);
+        });
+    </script>
+</body>
+</html>
