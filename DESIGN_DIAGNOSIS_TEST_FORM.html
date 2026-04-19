@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design Diagnosis — Test Form</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .form-section {
+            margin-bottom: 30px;
+        }
+        .form-section h2 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+        input[type="text"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+        }
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
+            cursor: pointer;
+        }
+        .checkbox-item label {
+            margin-bottom: 0;
+            cursor: pointer;
+            font-weight: normal;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-submit {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            flex: 1;
+            max-width: 300px;
+        }
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        .btn-clear {
+            background: #f0f0f0;
+            color: #333;
+            flex: 1;
+            max-width: 300px;
+        }
+        .btn-clear:hover {
+            background: #e0e0e0;
+        }
+        .results {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            display: none;
+        }
+        .results.show {
+            display: block;
+        }
+        .results h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .score-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .score-value {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .score-grade {
+            font-size: 24px;
+            color: #764ba2;
+            margin-top: 10px;
+        }
+        .score-description {
+            font-size: 14px;
+            color: #999;
+            margin-top: 10px;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        @media (max-width: 600px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            .header h1 {
+                font-size: 24px;
+            }
+        }
+        .example-button {
+            background: #e8f0fe;
+            color: #1967d2;
+            padding: 10px 15px;
+            border: 1px solid #1967d2;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+        .example-button:hover {
+            background: #d2e3fc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✨ Design Diagnosis</h1>
+            <p>Test the Vitality Score Scoring Engine</p>
+        </div>
+        
+        <div class="content">
+            <form id="testForm">
+                <!-- PROPERTY BASICS -->
+                <div class="form-section">
+                    <h2>Property Basics</h2>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label for="address">Address *</label>
+                            <input type="text" id="address" name="address" required placeholder="123 Main St, City, State">
+                            <button type="button" class="example-button" onclick="setExample('trion')">Load Trion @ KL</button>
+                            <button type="button" class="example-button" onclick="setExample('empty')">Load EMPTY BOX</button>
+                        </div>
+                        <div class="form-group">
+                            <label for="listingType">Listing Type *</label>
+                            <select id="listingType" name="listingType" required>
+                                <option value="">Select type...</option>
+                                <option value="house">House</option>
+                                <option value="condo">Condo</option>
+                                <option value="apartment">Apartment</option>
+                                <option value="studio">Studio</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label for="bedrooms">Bedrooms *</label>
+                            <input type="number" id="bedrooms" name="bedrooms" min="1" max="10" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="bathrooms">Bathrooms *</label>
+                            <input type="number" id="bathrooms" name="bathrooms" min="1" max="10" required>
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label for="guests">Guest Capacity *</label>
+                            <input type="number" id="guests" name="guests" min="1" max="20" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="photos">Total Photos</label>
+                            <input type="number" id="photos" name="photos" min="1" max="100" value="20">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HIDDEN FRICTION CHECKLIST -->
+                <div class="form-section">
+                    <h2>Hidden Friction Items</h2>
+                    <div class="form-group">
+                        <label>Essential Items (Check if present)</label>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="powerBars" name="powerBars">
+                                <label for="powerBars">Power bars</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="bedLamps" name="bedLamps">
+                                <label for="bedLamps">Bedside lamps</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="hangers" name="hangers">
+                                <label for="hangers">Hangers (10+)</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="plunger" name="plunger">
+                                <label for="plunger">Plunger(s)</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Kitchen Items</label>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="glasses" name="glasses">
+                                <label for="glasses">Drinking glasses</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="plates" name="plates">
+                                <label for="plates">Plates/bowls</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="dryingRack" name="dryingRack">
+                                <label for="dryingRack">Dish drying rack</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="paperTowels" name="paperTowels">
+                                <label for="paperTowels">Paper towels</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Living/Entry Items</label>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="coasters" name="coasters">
+                                <label for="coasters">Coasters</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="shoeRack" name="shoeRack">
+                                <label for="shoeRack">Shoe rack</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="mirror" name="mirror">
+                                <label for="mirror">Entryway mirror</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="bathMats" name="bathMats">
+                                <label for="bathMats">Bath mats</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DESIGN ASSESSMENT -->
+                <div class="form-section">
+                    <h2>Design Assessment (0-5 scale)</h2>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label for="lighting">Lighting Quality (0-5)</label>
+                            <input type="number" id="lighting" name="lighting" min="0" max="5" value="3" step="0.5">
+                        </div>
+                        <div class="form-group">
+                            <label for="flow">Functionality & Flow (0-5)</label>
+                            <input type="number" id="flow" name="flow" min="0" max="5" value="3" step="0.5">
+                        </div>
+                        <div class="form-group">
+                            <label for="storage">Storage & Organization (0-5)</label>
+                            <input type="number" id="storage" name="storage" min="0" max="5" value="3" step="0.5">
+                        </div>
+                        <div class="form-group">
+                            <label for="condition">Condition & Maintenance (0-5)</label>
+                            <input type="number" id="condition" name="condition" min="0" max="5" value="3" step="0.5">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BUTTONS -->
+                <div class="button-group">
+                    <button type="submit" class="btn-submit">🚀 Calculate Vitality Score</button>
+                    <button type="reset" class="btn-clear">Clear Form</button>
+                </div>
+            </form>
+
+            <!-- RESULTS -->
+            <div class="results" id="results">
+                <h3>📊 Vitality Score Results</h3>
+                <div class="score-box">
+                    <div class="score-value" id="scoreValue">-</div>
+                    <div class="score-grade" id="scoreGrade">-</div>
+                    <div class="score-description" id="scoreDesc">-</div>
+                </div>
+                <div id="scoreDetails" style="margin-top: 15px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Example data
+        const examples = {
+            trion: {
+                address: "Trion @ KL, Kuala Lumpur, Malaysia",
+                listingType: "condo",
+                bedrooms: 2,
+                bathrooms: 1,
+                guests: 4,
+                photos: 35,
+                powerBars: false,
+                bedLamps: false,
+                hangers: false,
+                plunger: false,
+                glasses: false,
+                plates: false,
+                dryingRack: false,
+                paperTowels: false,
+                coasters: false,
+                shoeRack: false,
+                mirror: false,
+                bathMats: false,
+                lighting: 4,
+                flow: 4,
+                storage: 3,
+                condition: 5
+            },
+            empty: {
+                address: "EMPTY BOX, Coalhurst, AB",
+                listingType: "house",
+                bedrooms: 2,
+                bathrooms: 1,
+                guests: 6,
+                photos: 21,
+                powerBars: true,
+                bedLamps: false,
+                hangers: true,
+                plunger: false,
+                glasses: true,
+                plates: true,
+                dryingRack: false,
+                paperTowels: true,
+                coasters: false,
+                shoeRack: false,
+                mirror: false,
+                bathMats: false,
+                lighting: 3,
+                flow: 3,
+                storage: 2,
+                condition: 3
+            }
+        };
+
+        function setExample(type) {
+            const data = examples[type];
+            Object.keys(data).forEach(key => {
+                const input = document.getElementById(key);
+                if (input) {
+                    if (input.type === 'checkbox') {
+                        input.checked = data[key];
+                    } else {
+                        input.value = data[key];
+                    }
+                }
+            });
+        }
+
+        function calculateScore() {
+            const form = document.getElementById('testForm');
+            const formData = new FormData(form);
+            
+            // Count hidden friction items (each worth points)
+            let frictionScore = 0;
+            const criticalItems = ['powerBars', 'bedLamps', 'hangers', 'plunger', 'glasses', 'plates', 'dryingRack', 'paperTowels', 'coasters', 'shoeRack', 'mirror', 'bathMats'];
+            
+            criticalItems.forEach(item => {
+                if (formData.has(item) && formData.get(item)) {
+                    frictionScore += 1.67; // 12 items × 1.67 = 20 points
+                }
+            });
+
+            // Design scores (scale 1-5 to 0-20 points)
+            const lighting = parseFloat(formData.get('lighting')) || 3;
+            const flow = parseFloat(formData.get('flow')) || 3;
+            const storage = parseFloat(formData.get('storage')) || 3;
+            const condition = parseFloat(formData.get('condition')) || 3;
+            
+            const lightingScore = (lighting / 5) * 20;
+            const flowScore = (flow / 5) * 20;
+            const storageScore = (storage / 5) * 20;
+            const conditionScore = (condition / 5) * 20;
+
+            // Photo strategy score (estimate based on photo count)
+            const photoCount = parseInt(formData.get('photos')) || 20;
+            let photoScore = 10;
+            if (photoCount < 10) photoScore = 3;
+            else if (photoCount < 15) photoScore = 6;
+            else if (photoCount > 50) photoScore = 8;
+
+            // Bedroom score (estimate)
+            let bedroomScore = 15;
+            if (!formData.has('bedLamps') || !formData.get('bedLamps')) bedroomScore -= 3;
+            if (!formData.has('hangers') || !formData.get('hangers')) bedroomScore -= 2;
+
+            // Calculate total
+            const total = bedroomScore + flowScore + lightingScore + storageScore + conditionScore + photoScore + frictionScore;
+            const vitality = Math.round((total / 150) * 100);
+
+            // Determine grade
+            let grade = 'F';
+            let gradeColor = '#d32f2f';
+            if (vitality >= 90) { grade = 'A'; gradeColor = '#388e3c'; }
+            else if (vitality >= 80) { grade = 'B'; gradeColor = '#7cb342'; }
+            else if (vitality >= 70) { grade = 'C'; gradeColor = '#fbc02d'; }
+            else if (vitality >= 60) { grade = 'D'; gradeColor = '#f57c00'; }
+
+            // Display results
+            const resultsDiv = document.getElementById('results');
+            const scoreValue = document.getElementById('scoreValue');
+            const scoreGrade = document.getElementById('scoreGrade');
+            const scoreDesc = document.getElementById('scoreDesc');
+
+            scoreValue.textContent = vitality;
+            scoreValue.style.color = gradeColor;
+            scoreGrade.textContent = `Grade: ${grade}`;
+            scoreGrade.style.color = gradeColor;
+
+            const descriptions = {
+                'A': 'Excellent! This property is move-in ready and well-thought-out.',
+                'B': 'Good! Minor improvements could enhance the experience.',
+                'C': 'Fair. Some important items are missing. Consider adding essentials.',
+                'D': 'Poor. Multiple critical items missing. Guests will struggle.',
+                'F': 'Critical gaps. Property is not guest-ready. Major improvements needed.'
+            };
+
+            scoreDesc.textContent = descriptions[grade];
+
+            // Show breakdown
+            const details = `
+                <div style="background: white; padding: 15px; border-radius: 6px; font-size: 13px;">
+                    <div><strong>Breakdown:</strong></div>
+                    <div>• Bedroom Standards: ${bedroomScore.toFixed(1)}/20</div>
+                    <div>• Functionality & Flow: ${flowScore.toFixed(1)}/20</div>
+                    <div>• Light & Brightness: ${lightingScore.toFixed(1)}/20</div>
+                    <div>• Storage & Organization: ${storageScore.toFixed(1)}/20</div>
+                    <div>• Condition & Maintenance: ${conditionScore.toFixed(1)}/20</div>
+                    <div>• Photo Strategy: ${photoScore.toFixed(1)}/10</div>
+                    <div>• Hidden Friction: ${frictionScore.toFixed(1)}/20</div>
+                    <div><strong>Total: ${total.toFixed(1)}/150</strong></div>
+                </div>
+            `;
+
+            document.getElementById('scoreDetails').innerHTML = details;
+            resultsDiv.classList.add('show');
+        }
+
+        document.getElementById('testForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            calculateScore();
+        });
+    </script>
+</body>
+</html>
