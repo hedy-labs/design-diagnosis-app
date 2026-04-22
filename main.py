@@ -29,13 +29,34 @@ except:
     logger.warning("python-dotenv not installed, skipping .env loading")
 
 # Configuration
-BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
+# BASE_URL can be set via .env or will auto-detect from request headers
+DEFAULT_BASE_URL = os.getenv("BASE_URL", None)
 DB_PATH = os.getenv("DB_PATH", "design_diagnosis.db")
 REPORT_OUTPUT_DIR = os.getenv("REPORT_OUTPUT_DIR", "./reports")
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
 AMAZON_AFFILIATE_ID = os.getenv("AMAZON_AFFILIATE_ID", "")
+
+
+def get_base_url(request: Optional[Request] = None) -> str:
+    """
+    Get BASE_URL from:
+    1. .env BASE_URL (explicit override)
+    2. Request headers (X-Forwarded-Proto + Host for VPS/proxies)
+    3. Request URL (falls back to request itself)
+    4. Default (localhost:8000)
+    """
+    if DEFAULT_BASE_URL:
+        return DEFAULT_BASE_URL
+    
+    if request:
+        # Check for X-Forwarded-Proto header (common with reverse proxies)
+        proto = request.headers.get("X-Forwarded-Proto", request.url.scheme)
+        host = request.headers.get("X-Forwarded-Host", request.url.netloc)
+        return f"{proto}://{host}"
+    
+    return "http://localhost:8000"
 
 # Create report output directory
 Path(REPORT_OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
@@ -192,7 +213,7 @@ async def health_check():
 
 
 @app.post("/api/submit-form", response_model=FormSubmitResponse)
-async def submit_form(form_data: FormSubmitInput, background_tasks: BackgroundTasks):
+async def submit_form(form_data: FormSubmitInput, background_tasks: BackgroundTasks, request: Request):
     """
     Submit property form and trigger email verification flow
     """
@@ -228,8 +249,12 @@ async def submit_form(form_data: FormSubmitInput, background_tasks: BackgroundTa
         
         logger.info(f"✅ Verification token created: {verification_token[:12]}...")
         
+        # Get dynamic BASE_URL from request
+        base_url = get_base_url(request)
+        
         # Send verification email
-        verification_link = f"{BASE_URL}/api/verify-email?token={verification_token}"
+        verification_link = f"{base_url}/api/verify-email?token={verification_token}"
+        logger.info(f"📧 Verification link: {verification_link}")
         background_tasks.add_task(
             email_service.send_verification_email,
             email=form_data.email,
