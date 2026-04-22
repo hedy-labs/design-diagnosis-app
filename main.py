@@ -86,17 +86,14 @@ except Exception as e:
 # MOCK SERVICES (for development)
 # ============================================================================
 
-# Email Service (Mock)
-class MockEmailService:
-    def send_verification_email(self, email: str, property_name: str, verification_link: str):
-        logger.info(f"📧 [MOCK] Verification email to {email}")
-        logger.info(f"📧 [MOCK] Link: {verification_link}")
-    
-    def send_report_email(self, email: str, property_name: str, pdf_path: str, vitality_score: float, grade: str, report_type: str):
-        logger.info(f"📧 [MOCK] Report email to {email} for {property_name} (Score: {vitality_score}, Grade: {grade})")
-
-email_service = MockEmailService()
-logger.info("✅ Email service initialized (mock mode)")
+# Email Service (SendGrid or Mock)
+try:
+    from email_service import EmailService
+    email_service = EmailService()
+    logger.info("✅ Email service initialized")
+except Exception as e:
+    logger.error(f"❌ Email service initialization failed: {e}")
+    email_service = None
 
 # Stripe Service (Mock)
 class MockStripeService:
