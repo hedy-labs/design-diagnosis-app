@@ -116,16 +116,14 @@ except Exception as e:
     logger.error(f"❌ Email service initialization failed: {e}")
     email_service = None
 
-# Stripe Service (Mock)
-class MockStripeService:
-    def create_payment_intent(self, amount: int, submission_id: int, property_name: str):
-        return {
-            'id': f'pi_mock_{uuid.uuid4().hex[:12]}',
-            'client_secret': f'pi_mock_{uuid.uuid4().hex[:12]}_secret_{uuid.uuid4().hex[:12]}'
-        }
-
-stripe_service = MockStripeService()
-logger.info("✅ Stripe service initialized (mock mode)")
+# Stripe Service
+try:
+    from stripe_service import StripeService
+    stripe_service = StripeService()
+    logger.info("✅ Stripe service initialized")
+except Exception as e:
+    logger.error(f"❌ Stripe service initialization failed: {e}")
+    stripe_service = None
 
 # Scoring Engine (Mock)
 class MockScoringEngine:
@@ -341,47 +339,55 @@ async def verify_email(background_tasks: BackgroundTasks, token: str = Query(...
         )
 
 
-@app.post("/api/create-payment", response_model=CreatePaymentResponse)
-async def create_payment(payment_input: CreatePaymentInput):
+@app.post("/api/create-checkout-session", response_model=CreatePaymentResponse)
+async def create_checkout_session(payment_input: CreatePaymentInput, request: Request):
     """
-    Create Stripe payment intent for premium report
+    Create Stripe Checkout Session for premium report payment
     """
     try:
+        if not stripe_service:
+            raise HTTPException(status_code=503, detail="Stripe service unavailable")
+        
         if not db:
             raise HTTPException(status_code=503, detail="Database service unavailable")
         
-        logger.info(f"💳 Payment intent requested for submission {payment_input.submission_id}")
+        logger.info(f"💳 Checkout session requested for submission {payment_input.submission_id}")
         
         # Verify submission exists
         submission = db.get_form_submission(payment_input.submission_id)
         if not submission:
             raise HTTPException(status_code=404, detail="Submission not found")
         
-        # Create Stripe payment intent (mock)
-        intent = stripe_service.create_payment_intent(
-            amount=3900,  # $39.00
+        # Get base URL
+        base_url = get_base_url(request)
+        
+        # Create Stripe Checkout Session
+        session = stripe_service.create_checkout_session(
             submission_id=payment_input.submission_id,
-            property_name=payment_input.property_name
+            property_name=payment_input.property_name,
+            customer_email=submission.email,
+            success_url=f"{base_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{base_url}/payment-cancelled"
         )
         
-        logger.info(f"✅ Payment intent created: {intent['id']}")
+        logger.info(f"✅ Checkout session created: {session['session_id']}")
         
         # Store payment record
         db.create_payment(
             submission_id=payment_input.submission_id,
-            stripe_intent_id=intent['id'],
+            stripe_intent_id=session['session_id'],
             amount=3900,
             status="pending"
         )
         
         return CreatePaymentResponse(
             success=True,
-            client_secret=intent.get('client_secret'),
-            message="Payment intent created. Complete payment to receive your premium report."
+            client_secret=session['checkout_url'],  # Return checkout URL
+            message="Redirect to Stripe Checkout to complete payment"
         )
     
     except Exception as e:
-        logger.error(f"❌ Payment creation error: {e}")
+        logger.error(f"❌ Checkout session creation error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 

@@ -707,12 +707,14 @@
             submitBtn.disabled = true;
             
             try {
-                showMessage('📧 Submitting your form...', 'loading');
-                
                 // Collect form data
+                const property_name = document.querySelector('input[name="property_name"]').value;
+                const email = document.querySelector('input[name="email"]').value;
+                const report_type = document.querySelector('input[name="report_type"]:checked').value;
+                
                 const formData = {
-                    email: document.querySelector('input[name="email"]').value,
-                    property_name: document.querySelector('input[name="property_name"]').value,
+                    email: email,
+                    property_name: property_name,
                     airbnb_url: document.querySelector('input[name="airbnb_url"]').value || null,
                     listing_type: document.querySelector('select[name="listing_type"]').value,
                     bedrooms: parseInt(document.querySelector('select[name="bedrooms"]').value),
@@ -720,34 +722,75 @@
                     guest_capacity: parseInt(document.querySelector('select[name="guest_capacity"]').value),
                     total_photos: document.querySelector('select[name="total_photos"]').value,
                     guest_comfort_checklist: Array.from(document.querySelectorAll('input[name="comfort"]:checked')).map(cb => cb.value),
-                    report_type: document.querySelector('input[name="report_type"]:checked').value
+                    report_type: report_type
                 };
                 
-                // Send to API
-                const response = await fetch('/api/submit-form', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(formData)
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showMessage(
-                        `✅ ${result.message}\n\nSubmission ID: ${result.submission_id}`,
-                        'success'
-                    );
-                    document.getElementById('designForm').reset();
-                    currentStep = 1;
-                    showStep(1);
+                // Different flows for Free vs Premium
+                if (report_type === 'free') {
+                    // FREE: Submit form → get verification email
+                    showMessage('📧 Submitting your form...', 'loading');
+                    
+                    const response = await fetch('/api/submit-form', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(formData)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showMessage(
+                            `✅ ${result.message}\n\nSubmission ID: ${result.submission_id}`,
+                            'success'
+                        );
+                        document.getElementById('designForm').reset();
+                        currentStep = 1;
+                        showStep(1);
+                    } else {
+                        showMessage(`❌ Error: ${result.message}`, 'error');
+                    }
                 } else {
-                    showMessage(`❌ Error: ${result.message}`, 'error');
+                    // PREMIUM: Submit form → create checkout session → redirect to Stripe
+                    showMessage('💳 Processing payment...', 'loading');
+                    
+                    // First submit the form
+                    const submitResponse = await fetch('/api/submit-form', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(formData)
+                    });
+                    
+                    const submitResult = await submitResponse.json();
+                    
+                    if (!submitResult.success) {
+                        showMessage(`❌ Form submission error: ${submitResult.message}`, 'error');
+                        submitBtn.disabled = false;
+                        return;
+                    }
+                    
+                    // Then create checkout session
+                    const checkoutResponse = await fetch('/api/create-checkout-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            submission_id: submitResult.submission_id,
+                            property_name: property_name,
+                            return_url: window.location.href
+                        })
+                    });
+                    
+                    const checkoutResult = await checkoutResponse.json();
+                    
+                    if (checkoutResult.success) {
+                        // Redirect to Stripe Checkout
+                        showMessage('🔄 Redirecting to secure payment...', 'loading');
+                        window.location.href = checkoutResult.client_secret;
+                    } else {
+                        showMessage(`❌ Payment error: ${checkoutResult.message}`, 'error');
+                    }
                 }
             } catch (error) {
                 showMessage(`❌ Error: ${error.message}`, 'error');
-            } finally {
                 submitBtn.disabled = false;
             }
         }
