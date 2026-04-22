@@ -253,7 +253,7 @@ async def submit_form(form_data: FormSubmitInput, background_tasks: BackgroundTa
 
 
 @app.get("/api/verify-email")
-async def verify_email(token: str = Query(...), background_tasks: BackgroundTasks):
+async def verify_email(background_tasks: BackgroundTasks, token: str = Query(...)):
     """
     Verify email with token and trigger report generation
     """
