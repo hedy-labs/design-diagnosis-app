@@ -315,24 +315,9 @@ async def verify_email(background_tasks: BackgroundTasks, token: str = Query(...
             report_type=submission.report_type
         )
         
-        return HTMLResponse(
-            f"""
-            <html>
-            <head>
-                <style>
-                    body {{ font-family: Arial, sans-serif; margin: 40px; text-align: center; }}
-                    h1 {{ color: #667eea; }}
-                    p {{ color: #666; font-size: 16px; }}
-                </style>
-            </head>
-            <body>
-                <h1>✅ Email Verified!</h1>
-                <p>Your Design Diagnosis report is being generated...</p>
-                <p>Check your email ({verification.email}) in a few moments to receive your report.</p>
-            </body>
-            </html>
-            """
-        )
+        # Redirect to beautiful email-verified page
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/email-verified", status_code=302)
     
     except Exception as e:
         logger.error(f"❌ Email verification error: {e}")
@@ -537,6 +522,25 @@ async def payment_success():
     
     logger.error("❌ payment-success.html not found in any expected location")
     return HTMLResponse("<h1>❌ Success page not found</h1>", status_code=404)
+
+
+@app.get("/email-verified", response_class=HTMLResponse)
+async def email_verified():
+    """Serve the email verified confirmation page"""
+    verified_paths = [
+        "./email-verified.html",
+        "email-verified.html",
+        "/root/design-diagnosis-app/email-verified.html"
+    ]
+    
+    for verified_path in verified_paths:
+        if os.path.exists(verified_path):
+            logger.info(f"📄 Serving email-verified.html from {verified_path}")
+            with open(verified_path, 'r') as f:
+                return f.read()
+    
+    logger.error("❌ email-verified.html not found in any expected location")
+    return HTMLResponse("<h1>❌ Verified page not found</h1>", status_code=404)
 
 
 @app.get("/payment-cancelled", response_class=HTMLResponse)

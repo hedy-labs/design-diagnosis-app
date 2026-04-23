@@ -48,7 +48,7 @@ class EmailService:
     def send_verification_email(self, email: str, property_name: str, verification_link: str):
         """Send email verification link"""
         try:
-            subject = "Verify Your Email — Design Diagnosis Report"
+            subject = "Your Design Diagnosis Report is Ready!"
             html_content = f"""
             <html>
             <head>
