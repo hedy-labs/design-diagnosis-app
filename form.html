@@ -669,13 +669,17 @@
                     const airbnb_url = document.querySelector('input[name="airbnb_url"]');
                     
                     const errors = [];
-                    if (!property_name || !property_name.value) errors.push('Property Name');
-                    if (!listing_type || !listing_type.value) errors.push('Property Type');
-                    if (!bedrooms || !bedrooms.value) errors.push('Bedrooms');
-                    if (!bathrooms || !bathrooms.value) errors.push('Bathrooms');
-                    if (!guest_capacity || !guest_capacity.value) errors.push('Guest Capacity');
-                    if (!total_photos || !total_photos.value) errors.push('Total Photos');
-                    if (!airbnb_url || !airbnb_url.value) errors.push('Airbnb/VRBO URL');
+                    
+                    // Check text inputs
+                    if (!property_name || !property_name.value.trim()) errors.push('Property Name');
+                    if (!airbnb_url || !airbnb_url.value.trim()) errors.push('Airbnb/VRBO URL');
+                    
+                    // Check dropdowns (value="" means "Select..." not chosen)
+                    if (!listing_type || listing_type.value === '') errors.push('Property Type');
+                    if (!bedrooms || bedrooms.value === '') errors.push('Bedrooms');
+                    if (!bathrooms || bathrooms.value === '') errors.push('Bathrooms');
+                    if (!guest_capacity || guest_capacity.value === '') errors.push('Guest Capacity');
+                    if (!total_photos || total_photos.value === '') errors.push('Total Photos');
                     
                     if (errors.length > 0) {
                         showMessage('❌ Please fill in: ' + errors.join(', '), 'error');
@@ -683,7 +687,8 @@
                     }
                     
                     // Validate URL format
-                    if (!airbnb_url.value.includes('airbnb') && !airbnb_url.value.includes('vrbo')) {
+                    const url_lower = airbnb_url.value.toLowerCase();
+                    if (!url_lower.includes('airbnb') && !url_lower.includes('vrbo')) {
                         showMessage('❌ Please enter a valid Airbnb or VRBO listing URL', 'error');
                         return;
                     }
