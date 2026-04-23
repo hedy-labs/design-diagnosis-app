@@ -29,8 +29,11 @@ except:
     logger.warning("python-dotenv not installed, skipping .env loading")
 
 # Configuration
-# BASE_URL can be set via .env or will auto-detect from request headers
-DEFAULT_BASE_URL = os.getenv("BASE_URL", None)
+# BASE_URL: explicit fallback for VPS/production
+BASE_URL = "http://147.182.247.168:8000"  # Default VPS IP
+
+# Override with .env if set
+DEFAULT_BASE_URL = os.getenv("BASE_URL", BASE_URL)
 DB_PATH = os.getenv("DB_PATH", "design_diagnosis.db")
 REPORT_OUTPUT_DIR = os.getenv("REPORT_OUTPUT_DIR", "./reports")
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
