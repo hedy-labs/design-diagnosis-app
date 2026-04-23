@@ -6,34 +6,11 @@ Generates professional PDF reports with vitality scores and recommendations.
 
 import logging
 import os
-import re
 from typing import Dict, List
 
+from sanitizer import sanitize_text_for_pdf, sanitize_float, sanitize_integer
+
 logger = logging.getLogger(__name__)
-
-
-def sanitize_text_for_pdf(text: str) -> str:
-    """
-    Sanitize text for PDF generation (fpdf2 compatibility).
-    
-    Removes/replaces problematic Unicode characters:
-    - Special dashes (–, —) → regular hyphen (-)
-    - Emojis → removed
-    - Other Unicode → ASCII fallback
-    """
-    if not text:
-        return ""
-    
-    # Replace special dashes
-    text = text.replace('–', '-')  # En dash
-    text = text.replace('—', '-')  # Em dash
-    text = text.replace('•', '-')  # Bullet
-    text = text.replace('…', '...')  # Ellipsis
-    
-    # Remove emojis and other non-ASCII characters
-    text = re.sub(r'[^\x00-\x7F]+', '', text)
-    
-    return text.strip()
 
 # Try to import fpdf2
 try:

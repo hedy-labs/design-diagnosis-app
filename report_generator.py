@@ -82,18 +82,12 @@ class VitalityScorer:
         
         Handles string inputs like "51+" by extracting numeric part.
         """
+        from sanitizer import sanitize_integer
+        
         count_score = 0
         
-        # Sanitize input: extract numeric part, handle "51+" format
-        if isinstance(total_photos, str):
-            # Remove non-numeric characters except for the number itself
-            numeric_str = ''.join(c for c in total_photos if c.isdigit())
-            try:
-                total_photos = int(numeric_str) if numeric_str else 20
-            except ValueError:
-                total_photos = 20  # Default if parsing fails
-        else:
-            total_photos = int(total_photos) if total_photos else 20
+        # Sanitize input: handles "51+", strings, integers
+        total_photos = sanitize_integer(total_photos, default=20)
         
         # Photo count penalty/reward
         if 10 <= total_photos <= 40:
