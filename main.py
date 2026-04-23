@@ -208,6 +208,21 @@ async def submit_form(form_data: FormSubmitInput, background_tasks: BackgroundTa
         
         logger.info(f"📝 Form submission from {form_data.email} for {form_data.property_name}")
         
+        # Validate: Airbnb URL is required
+        if not form_data.airbnb_url or not form_data.airbnb_url.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Airbnb/VRBO URL is required. Please provide your listing URL."
+            )
+        
+        # Validate: URL contains airbnb or vrbo
+        url_lower = form_data.airbnb_url.lower()
+        if 'airbnb' not in url_lower and 'vrbo' not in url_lower:
+            raise HTTPException(
+                status_code=400,
+                detail="Please enter a valid Airbnb or VRBO listing URL."
+            )
+        
         # Check if user is already verified (zero-friction return)
         user = db.get_or_create_user(form_data.email)
         is_returning_verified = user.is_verified

@@ -380,8 +380,9 @@
                 </div>
                 
                 <div class="form-group">
-                    <label>Airbnb/VRBO URL (optional)</label>
-                    <input type="text" name="airbnb_url" placeholder="https://www.airbnb.com/rooms/...">
+                    <label>Airbnb/VRBO URL <span style="color: #ef4444; font-weight: bold;">*</span></label>
+                    <input type="url" name="airbnb_url" placeholder="https://www.airbnb.com/rooms/..." required>
+                    <small style="color: #6b7280; margin-top: 5px; display: block;">Required: Provide your listing URL or upload photos below</small>
                 </div>
                 
                 <div class="form-group">
@@ -665,6 +666,7 @@
                     const bathrooms = document.querySelector('select[name="bathrooms"]');
                     const guest_capacity = document.querySelector('select[name="guest_capacity"]');
                     const total_photos = document.querySelector('select[name="total_photos"]');
+                    const airbnb_url = document.querySelector('input[name="airbnb_url"]');
                     
                     const errors = [];
                     if (!property_name || !property_name.value) errors.push('Property Name');
@@ -673,9 +675,16 @@
                     if (!bathrooms || !bathrooms.value) errors.push('Bathrooms');
                     if (!guest_capacity || !guest_capacity.value) errors.push('Guest Capacity');
                     if (!total_photos || !total_photos.value) errors.push('Total Photos');
+                    if (!airbnb_url || !airbnb_url.value) errors.push('Airbnb/VRBO URL');
                     
                     if (errors.length > 0) {
                         showMessage('❌ Please fill in: ' + errors.join(', '), 'error');
+                        return;
+                    }
+                    
+                    // Validate URL format
+                    if (!airbnb_url.value.includes('airbnb') && !airbnb_url.value.includes('vrbo')) {
+                        showMessage('❌ Please enter a valid Airbnb or VRBO listing URL', 'error');
                         return;
                     }
                 } else if (currentStep === 2) {
