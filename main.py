@@ -440,17 +440,21 @@ async def payment_webhook(request: Request, background_tasks: BackgroundTasks):
             db.update_payment_status(payment.id, "completed")
             logger.info(f"✅ Payment marked completed: {payment.id}")
             
-            # Queue report generation
+            # Get submission
             submission = db.get_form_submission(payment.submission_id)
-            if submission:
-                logger.info(f"📊 Queuing report generation for submission {submission.id}")
-                background_tasks.add_task(
-                    generate_and_send_report,
-                    submission_id=submission.id,
-                    report_type="premium"
-                )
-            else:
+            if not submission:
                 logger.error(f"❌ Submission not found for payment {payment.id}")
+                return {"status": "received"}
+            
+            # IMMEDIATELY queue premium report generation
+            logger.info(f"📊 Queuing premium report generation for submission {submission.id}")
+            background_tasks.add_task(
+                generate_and_send_report,
+                submission_id=submission.id,
+                report_type="premium"
+            )
+            
+            logger.info(f"✅ Webhook processing complete. Report generation queued.")
         
         return {"status": "received"}
     
@@ -595,7 +599,8 @@ async def generate_and_send_report(submission_id: int, report_type: str):
             return
         
         # Generate vitality score using real report generator
-        from report_generator import generate_report
+        from report_generator import generate_report, ReportBuilder
+        from pdf_generator import generate_pdf_report
         
         submission_dict = {
             'id': submission.id,
@@ -613,13 +618,35 @@ async def generate_and_send_report(submission_id: int, report_type: str):
         score_data = result['vitality_data']
         logger.info(f"✅ Vitality score calculated: {score_data['vitality_score']}/100 ({score_data['grade']})")
         
+        # Generate recommendations
+        builder = ReportBuilder(submission_dict, score_data)
+        recommendations = builder._generate_recommendations()
+        
         # Save HTML report
         html_filename = f"report_{submission_id}_{uuid.uuid4().hex[:8]}.html"
-        pdf_path = os.path.join(REPORT_OUTPUT_DIR or "./reports", html_filename)
+        report_dir = REPORT_OUTPUT_DIR or "./reports"
+        html_path = os.path.join(report_dir, html_filename)
         
-        os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
-        with open(pdf_path, 'w') as f:
+        os.makedirs(report_dir, exist_ok=True)
+        with open(html_path, 'w') as f:
             f.write(result['html'])
+        
+        # Generate PDF report (if fpdf2 available, otherwise HTML fallback)
+        pdf_filename = html_filename.replace('.html', '.pdf')
+        pdf_path = os.path.join(report_dir, pdf_filename)
+        
+        pdf_success = generate_pdf_report(
+            output_path=pdf_path,
+            property_name=submission.property_name,
+            vitality_data=score_data,
+            recommendations=recommendations
+        )
+        
+        if not pdf_success:
+            # Fallback to HTML
+            from pdf_generator import generate_html_as_pdf_fallback
+            generate_html_as_pdf_fallback(pdf_path, result['html'])
+            logger.info(f"📄 Using HTML fallback for report")
         
         # Store report record
         report = db.create_report(
