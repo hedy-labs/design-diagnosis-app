@@ -106,6 +106,15 @@ try:
 except Exception as e:
     logger.error(f"❌ Database initialization failed: {e}")
 
+# Initialize email list management routes
+try:
+    from email_list_routes import create_email_list_router
+    email_list_router = create_email_list_router(db)
+    app.include_router(email_list_router)
+    logger.info("✅ Email list management routes initialized")
+except Exception as e:
+    logger.error(f"⚠️  Email list routes failed to load: {e}")
+
 # ============================================================================
 # MOCK SERVICES (for development)
 # ============================================================================
