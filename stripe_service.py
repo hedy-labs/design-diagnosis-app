@@ -46,8 +46,8 @@ class StripeService:
         submission_id: int,
         property_name: str,
         customer_email: str,
-        success_url: str,
-        cancel_url: str
+        success_url: Optional[str] = None,
+        cancel_url: Optional[str] = None
     ) -> Dict:
         """
         Create a Stripe Checkout Session for premium report payment

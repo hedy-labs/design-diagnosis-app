@@ -369,8 +369,8 @@ async def create_checkout_session(payment_input: CreatePaymentInput, request: Re
             submission_id=payment_input.submission_id,
             property_name=payment_input.property_name,
             customer_email=submission.email,
-            success_url=f"{base_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{base_url}/payment-cancelled"
+            success_url=f"{base_url}/success?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{base_url}/cancel?session_id={{CHECKOUT_SESSION_ID}}"
         )
         
         logger.info(f"✅ Checkout session created: {session['session_id']}")
