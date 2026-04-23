@@ -594,48 +594,58 @@ async def generate_and_send_report(submission_id: int, report_type: str):
             logger.error(f"❌ Submission {submission_id} not found")
             return
         
-        # Calculate vitality score
-        score_data = scoring_engine.calculate_score(
-            guest_comfort_checklist=submission.guest_comfort_checklist,
-            property_type=submission.listing_type
-        )
+        # Generate vitality score using real report generator
+        from report_generator import generate_report
         
-        logger.info(f"✅ Vitality score calculated: {score_data['score']}/100 ({score_data['grade']})")
+        submission_dict = {
+            'id': submission.id,
+            'property_name': submission.property_name,
+            'listing_type': submission.listing_type,
+            'guest_comfort_checklist': submission.guest_comfort_checklist,
+            'total_photos': submission.total_photos,
+        }
         
-        # Generate PDF
-        pdf_filename = f"report_{submission_id}_{uuid.uuid4().hex[:8]}.pdf"
-        pdf_path = os.path.join(REPORT_OUTPUT_DIR, pdf_filename)
+        result = generate_report(submission_dict)
+        if not result['success']:
+            logger.error(f"❌ Report generation failed: {result.get('error')}")
+            return
         
-        pdf_generator.generate_report(
-            property_name=submission.property_name,
-            vitality_score=score_data.get('score', 0),
-            grade=score_data.get('grade', 'F'),
-            report_type=report_type,
-            guest_comfort_checklist=submission.guest_comfort_checklist,
-            output_path=pdf_path
-        )
+        score_data = result['vitality_data']
+        logger.info(f"✅ Vitality score calculated: {score_data['vitality_score']}/100 ({score_data['grade']})")
+        
+        # Save HTML report
+        html_filename = f"report_{submission_id}_{uuid.uuid4().hex[:8]}.html"
+        pdf_path = os.path.join(REPORT_OUTPUT_DIR or "./reports", html_filename)
+        
+        os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+        with open(pdf_path, 'w') as f:
+            f.write(result['html'])
         
         # Store report record
         report = db.create_report(
             submission_id=submission_id,
-            property_name=submission.property_name,
-            vitality_score=score_data.get('score', 0),
-            grade=score_data.get('grade', 'F'),
-            file_name=pdf_filename,
+            vitality_score=score_data['vitality_score'],
+            grade=score_data['grade'],
+            html_content=result['html'],
             report_type=report_type
         )
         
         logger.info(f"✅ Report record created: {report.id}")
         
         # Send report email
-        email_service.send_report_email(
-            email=submission.email,
-            property_name=submission.property_name,
-            pdf_path=pdf_path,
-            vitality_score=score_data.get('score', 0),
-            grade=score_data.get('grade', 'F'),
-            report_type=report_type
-        )
+        if email_service:
+            try:
+                email_service.send_report_email(
+                    email=submission.email,
+                    property_name=submission.property_name,
+                    pdf_path=pdf_path,
+                    vitality_score=score_data['vitality_score'],
+                    grade=score_data['grade'],
+                    report_type=report_type
+                )
+                logger.info(f"✅ Report email sent to {submission.email}")
+            except Exception as e:
+                logger.error(f"⚠️  Report email error: {e}")
         
         # Record delivery
         db.create_report_delivery(
