@@ -6,9 +6,34 @@ Generates professional PDF reports with vitality scores and recommendations.
 
 import logging
 import os
+import re
 from typing import Dict, List
 
 logger = logging.getLogger(__name__)
+
+
+def sanitize_text_for_pdf(text: str) -> str:
+    """
+    Sanitize text for PDF generation (fpdf2 compatibility).
+    
+    Removes/replaces problematic Unicode characters:
+    - Special dashes (–, —) → regular hyphen (-)
+    - Emojis → removed
+    - Other Unicode → ASCII fallback
+    """
+    if not text:
+        return ""
+    
+    # Replace special dashes
+    text = text.replace('–', '-')  # En dash
+    text = text.replace('—', '-')  # Em dash
+    text = text.replace('•', '-')  # Bullet
+    text = text.replace('…', '...')  # Ellipsis
+    
+    # Remove emojis and other non-ASCII characters
+    text = re.sub(r'[^\x00-\x7F]+', '', text)
+    
+    return text.strip()
 
 # Try to import fpdf2
 try:
@@ -89,7 +114,7 @@ def generate_pdf_report(
         
         pdf.set_font("Helvetica", "", 16)
         pdf.set_text_color(100, 100, 100)
-        pdf.cell(0, 10, property_name, 0, 1, "C")
+        pdf.cell(0, 10, sanitize_text_for_pdf(property_name), 0, 1, "C")
         pdf.ln(10)
         
         # Vitality Score Section
@@ -126,12 +151,8 @@ def generate_pdf_report(
         pdf.chapter_title("Top Recommendations")
         for i, rec in enumerate(recommendations[:5], 1):
             priority = rec.get('priority', '')
-            title = rec.get('title', '')
-            description = rec.get('description', '')
-            
-            # Remove emojis from text for PDF compatibility
-            title = ''.join(c for c in title if ord(c) < 128 or ord(c) > 127 and c.isascii())
-            description = ''.join(c for c in description if ord(c) < 128 or ord(c) > 127 and c.isascii())
+            title = sanitize_text_for_pdf(rec.get('title', ''))
+            description = sanitize_text_for_pdf(rec.get('description', ''))
             
             pdf.set_font("Helvetica", "B", 11)
             pdf.cell(0, 6, f"{i}. [{priority}] {title}", 0, 1)

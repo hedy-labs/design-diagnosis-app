@@ -102,7 +102,7 @@ class DesignDiagnosisDB:
         return self.conn
     
     def init_db(self):
-        """Initialize database tables"""
+        """Initialize database tables with all necessary columns"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
@@ -151,16 +151,17 @@ class DesignDiagnosisDB:
             )
         """)
         
-        # Reports table
+        # Reports table — COMPLETE SCHEMA with all columns
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS reports (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 submission_id INTEGER NOT NULL,
-                property_name TEXT NOT NULL,
-                vitality_score REAL NOT NULL,
-                grade TEXT NOT NULL,
-                file_name TEXT NOT NULL,
-                report_type TEXT NOT NULL,
+                property_name TEXT,
+                vitality_score REAL,
+                grade TEXT,
+                file_name TEXT,
+                report_type TEXT,
+                html_content TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (submission_id) REFERENCES form_submissions(id)
             )
@@ -172,14 +173,70 @@ class DesignDiagnosisDB:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 report_id INTEGER NOT NULL,
                 email TEXT NOT NULL,
-                status TEXT NOT NULL,
+                delivery_status TEXT NOT NULL,
+                delivery_method TEXT DEFAULT 'email',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (report_id) REFERENCES reports(id)
             )
         """)
         
         conn.commit()
+        
+        # Add missing columns to existing tables (migration safety)
+        self._migrate_reports_table()
+        self._migrate_report_deliveries_table()
+        
         logger.info(f"✅ Database initialized: {self.db_path}")
+    
+    def _migrate_reports_table(self):
+        """Safely add missing columns to reports table"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute("PRAGMA table_info(reports)")
+            columns = {row[1] for row in cursor.fetchall()}
+            
+            # Add missing columns
+            if 'submission_id' not in columns:
+                cursor.execute("ALTER TABLE reports ADD COLUMN submission_id INTEGER")
+                logger.info("✅ Added submission_id column to reports")
+            
+            if 'html_content' not in columns:
+                cursor.execute("ALTER TABLE reports ADD COLUMN html_content TEXT")
+                logger.info("✅ Added html_content column to reports")
+            
+            if 'created_at' not in columns:
+                cursor.execute("ALTER TABLE reports ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+                logger.info("✅ Added created_at column to reports")
+            
+            conn.commit()
+        except Exception as e:
+            logger.warning(f"⚠️  Migration warning: {e}")
+    
+    def _migrate_report_deliveries_table(self):
+        """Safely update report_deliveries schema"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute("PRAGMA table_info(report_deliveries)")
+            columns = {row[1] for row in cursor.fetchall()}
+            
+            if 'delivery_status' not in columns and 'status' in columns:
+                # Column exists but with different name
+                pass
+            elif 'delivery_status' not in columns:
+                cursor.execute("ALTER TABLE report_deliveries ADD COLUMN delivery_status TEXT")
+                logger.info("✅ Added delivery_status column to report_deliveries")
+            
+            if 'delivery_method' not in columns:
+                cursor.execute("ALTER TABLE report_deliveries ADD COLUMN delivery_method TEXT DEFAULT 'email'")
+                logger.info("✅ Added delivery_method column to report_deliveries")
+            
+            conn.commit()
+        except Exception as e:
+            logger.warning(f"⚠️  Migration warning: {e}")
     
     # ========================================================================
     # FORM SUBMISSION OPERATIONS
