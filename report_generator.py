@@ -72,15 +72,28 @@ class VitalityScorer:
         # Cap at 42
         return min(points, 42)
     
-    def calculate_photo_score(self, total_photos: int) -> int:
+    def calculate_photo_score(self, total_photos) -> int:
         """
         Calculate photo score (0-20 points).
         
         Ideal: 10-40 photos (5 pts)
         Low: <10 or >40 photos (2 pts)
         Quality assessment: Up to 15 pts
+        
+        Handles string inputs like "51+" by extracting numeric part.
         """
         count_score = 0
+        
+        # Sanitize input: extract numeric part, handle "51+" format
+        if isinstance(total_photos, str):
+            # Remove non-numeric characters except for the number itself
+            numeric_str = ''.join(c for c in total_photos if c.isdigit())
+            try:
+                total_photos = int(numeric_str) if numeric_str else 20
+            except ValueError:
+                total_photos = 20  # Default if parsing fails
+        else:
+            total_photos = int(total_photos) if total_photos else 20
         
         # Photo count penalty/reward
         if 10 <= total_photos <= 40:

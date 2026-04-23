@@ -602,12 +602,18 @@ async def generate_and_send_report(submission_id: int, report_type: str):
         from report_generator import generate_report, ReportBuilder
         from pdf_generator import generate_pdf_report
         
+        # Sanitize total_photos (handles "51+" format)
+        total_photos = submission.total_photos
+        if isinstance(total_photos, str):
+            numeric_str = ''.join(c for c in total_photos if c.isdigit())
+            total_photos = int(numeric_str) if numeric_str else 20
+        
         submission_dict = {
             'id': submission.id,
             'property_name': submission.property_name,
             'listing_type': submission.listing_type,
             'guest_comfort_checklist': submission.guest_comfort_checklist,
-            'total_photos': submission.total_photos,
+            'total_photos': total_photos,
         }
         
         result = generate_report(submission_dict)
