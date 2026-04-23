@@ -30,7 +30,8 @@ class User:
     is_verified: bool
     verification_count: int
     last_verified_at: str
-    created_at: str
+    wants_marketing_emails: bool = False
+    created_at: str = ""
 
 
 @dataclass
@@ -124,6 +125,7 @@ class DesignDiagnosisDB:
                 is_verified BOOLEAN DEFAULT 0,
                 verification_count INTEGER DEFAULT 0,
                 last_verified_at TIMESTAMP,
+                wants_marketing_emails BOOLEAN DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -205,10 +207,28 @@ class DesignDiagnosisDB:
         conn.commit()
         
         # Add missing columns to existing tables (migration safety)
+        self._migrate_users_table()
         self._migrate_reports_table()
         self._migrate_report_deliveries_table()
         
         logger.info(f"✅ Database initialized: {self.db_path}")
+    
+    def _migrate_users_table(self):
+        """Safely add missing columns to users table"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute("PRAGMA table_info(users)")
+            columns = {row[1] for row in cursor.fetchall()}
+            
+            if 'wants_marketing_emails' not in columns:
+                cursor.execute("ALTER TABLE users ADD COLUMN wants_marketing_emails BOOLEAN DEFAULT 0")
+                logger.info("✅ Added wants_marketing_emails column to users")
+            
+            conn.commit()
+        except Exception as e:
+            logger.warning(f"⚠️  Migration warning: {e}")
     
     def _migrate_reports_table(self):
         """Safely add missing columns to reports table"""
@@ -264,7 +284,7 @@ class DesignDiagnosisDB:
     # USER MANAGEMENT (ZERO-FRICTION RETURNS)
     # ========================================================================
     
-    def get_or_create_user(self, email: str) -> User:
+    def get_or_create_user(self, email: str, wants_marketing: bool = False) -> User:
         """Get existing user or create new one"""
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -280,14 +300,15 @@ class DesignDiagnosisDB:
                 is_verified=bool(row[2]),
                 verification_count=row[3],
                 last_verified_at=row[4],
-                created_at=row[5]
+                wants_marketing_emails=bool(row[5]) if len(row) > 5 else False,
+                created_at=row[6] if len(row) > 6 else ""
             )
         
         # Create new user
         cursor.execute("""
-            INSERT INTO users (email, is_verified, verification_count)
-            VALUES (?, ?, ?)
-        """, (email.lower(), 0, 0))
+            INSERT INTO users (email, is_verified, verification_count, wants_marketing_emails)
+            VALUES (?, ?, ?, ?)
+        """, (email.lower(), 0, 0, wants_marketing))
         conn.commit()
         
         user_id = cursor.lastrowid
@@ -345,6 +366,33 @@ class DesignDiagnosisDB:
         """, (user_id,))
         conn.commit()
         logger.info(f"✅ User {user_id} marked as verified")
+    
+    def update_marketing_preference(self, user_id: int, wants_marketing: bool):
+        """Update user's marketing email preference"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            UPDATE users 
+            SET wants_marketing_emails = ?
+            WHERE id = ?
+        """, (wants_marketing, user_id))
+        conn.commit()
+        logger.info(f"✅ User {user_id} marketing preference updated: {wants_marketing}")
+    
+    def get_marketing_opted_in_emails(self) -> List[str]:
+        """Get all emails from users who opted in to marketing"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT email FROM users 
+            WHERE is_verified = 1 AND wants_marketing_emails = 1
+            ORDER BY created_at DESC
+        """)
+        
+        rows = cursor.fetchall()
+        return [row[0] for row in rows]
     
     # ========================================================================
     # FORM SUBMISSION OPERATIONS

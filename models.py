@@ -25,6 +25,7 @@ class FormSubmitInput(BaseModel):
     total_photos: str
     guest_comfort_checklist: List[str]
     report_type: str  # "free" or "premium"
+    wants_marketing_emails: bool = False  # Opt-in for marketing emails
     
     @validator('report_type')
     def validate_report_type(cls, v):

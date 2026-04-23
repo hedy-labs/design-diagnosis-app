@@ -607,6 +607,14 @@
                         </div>
                     </div>
                 </div>
+                
+                <div class="form-group" style="background: #f0f4ff; padding: 15px; border-radius: 6px; border-left: 4px solid #667eea; margin-top: 20px;">
+                    <label style="display: flex; align-items: center; cursor: pointer; margin: 0;">
+                        <input type="checkbox" name="wants_marketing_emails" value="true" style="width: 20px; height: 20px; cursor: pointer; margin-right: 12px;">
+                        <span style="color: #555;">Yes! Send me design tips, exclusive offers, and updates from Rooms by Rachel</span>
+                    </label>
+                    <small style="color: #6b7280; display: block; margin-top: 8px; margin-left: 32px;">You can unsubscribe anytime</small>
+                </div>
             </div>
             
             <!-- Buttons -->
@@ -735,7 +743,8 @@
                     guest_capacity: parseInt(document.querySelector('select[name="guest_capacity"]').value),
                     total_photos: document.querySelector('select[name="total_photos"]').value,
                     guest_comfort_checklist: Array.from(document.querySelectorAll('input[name="comfort"]:checked')).map(cb => cb.value),
-                    report_type: report_type
+                    report_type: report_type,
+                    wants_marketing_emails: document.querySelector('input[name="wants_marketing_emails"]').checked
                 };
                 
                 // Different flows for Free vs Premium

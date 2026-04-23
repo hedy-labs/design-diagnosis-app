@@ -224,8 +224,13 @@ async def submit_form(form_data: FormSubmitInput, background_tasks: BackgroundTa
             )
         
         # Check if user is already verified (zero-friction return)
-        user = db.get_or_create_user(form_data.email)
+        user = db.get_or_create_user(form_data.email, wants_marketing=form_data.wants_marketing_emails)
         is_returning_verified = user.is_verified
+        
+        # Update marketing preference if user opted in
+        if form_data.wants_marketing_emails and not user.wants_marketing_emails:
+            db.update_marketing_preference(user.id, True)
+            logger.info(f"📬 User {form_data.email} opted in to marketing emails")
         
         logger.info(f"🔍 User status: {'Returning Verified ✅' if is_returning_verified else 'New/Unverified'}")
         
