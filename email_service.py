@@ -134,6 +134,13 @@ class EmailService:
     ):
         """Send report email with PDF attachment"""
         try:
+            # Ensure pdf_path is absolute and in the reports directory
+            if not os.path.isabs(pdf_path):
+                reports_dir = os.getenv("REPORT_OUTPUT_DIR", "./reports")
+                pdf_path = os.path.join(reports_dir, os.path.basename(pdf_path))
+            
+            logger.info(f"📎 Looking for attachment at: {pdf_path}")
+            
             subject = f"Your Design Diagnosis Report — {property_name} ({grade})"
             html_content = f"""
             <html>

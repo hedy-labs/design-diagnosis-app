@@ -152,30 +152,14 @@ scoring_engine = MockScoringEngine()
 logger.info("✅ Scoring engine initialized (mock mode)")
 
 # PDF Generator (Mock)
-class MockPDFGenerator:
-    def generate_report(self, property_name: str, vitality_score: float, grade: str, report_type: str, guest_comfort_checklist: List[str], output_path: str):
-        # Create simple text file (mock PDF)
-        content = f"""
-DESIGN DIAGNOSIS REPORT
-{'=' * 60}
-
-Property: {property_name}
-Vitality Score: {vitality_score}/100
-Grade: {grade}
-Report Type: {report_type.upper()}
-Generated: {datetime.utcnow().isoformat()}
-
-Guest Comfort Items Checked: {len(guest_comfort_checklist)}
-{', '.join(guest_comfort_checklist[:5])}...
-
-This is a mock PDF report for testing purposes.
-"""
-        with open(output_path, 'w') as f:
-            f.write(content)
-        logger.info(f"📄 Mock report generated: {output_path}")
-
-pdf_generator = MockPDFGenerator()
-logger.info("✅ PDF generator initialized (mock mode)")
+# Import real PDF generator (not mock)
+try:
+    from pdf_generator import generate_pdf_report, generate_html_as_pdf_fallback
+    pdf_available = True
+    logger.info("✅ PDF generator initialized (real mode with fpdf2)")
+except ImportError:
+    logger.warning("⚠️  fpdf2 not available, PDF generation will use HTML fallback")
+    pdf_available = False
 
 # ============================================================================
 # API ENDPOINTS
