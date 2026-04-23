@@ -25,7 +25,8 @@ class EmailService:
     
     def __init__(self):
         self.api_key = os.getenv("SENDGRID_API_KEY")
-        self.from_email = os.getenv("SENDGRID_FROM_EMAIL", "noreply@designdiagnosisapp.com")
+        # Use a more trusted sender email (Rachel's domain if available)
+        self.from_email = os.getenv("SENDGRID_FROM_EMAIL", "support@roomsbyrachel.com")
         
         if self.api_key and SENDGRID_AVAILABLE:
             try:
@@ -52,30 +53,54 @@ class EmailService:
             <html>
             <head>
                 <style>
-                    body {{ font-family: Arial, sans-serif; color: #333; }}
+                    body {{ font-family: Arial, sans-serif; color: #333; line-height: 1.6; }}
                     .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-                    .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 5px; text-align: center; }}
-                    .content {{ padding: 20px; background: #f9f9f9; border-radius: 5px; margin: 20px 0; }}
-                    .button {{ display: inline-block; background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
-                    .footer {{ color: #999; font-size: 12px; text-align: center; margin-top: 20px; }}
+                    .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px 20px; border-radius: 8px; text-align: center; }}
+                    .header h1 {{ margin: 0; font-size: 28px; }}
+                    .header p {{ margin: 10px 0 0 0; opacity: 0.9; }}
+                    .content {{ padding: 30px; background: #f9f9f9; border-radius: 8px; margin: 20px 0; }}
+                    .cta-button {{ 
+                        display: inline-block; 
+                        background: #667eea; 
+                        color: white; 
+                        padding: 14px 28px; 
+                        text-decoration: none; 
+                        border-radius: 6px; 
+                        margin: 20px 0;
+                        font-weight: bold;
+                        cursor: pointer;
+                    }}
+                    .cta-button:hover {{ background: #764ba2; }}
+                    .footer {{ color: #999; font-size: 12px; text-align: center; margin-top: 30px; }}
+                    .divider {{ border-top: 1px solid #ddd; margin: 20px 0; }}
                 </style>
             </head>
             <body>
                 <div class="container">
                     <div class="header">
                         <h1>✨ Design Diagnosis</h1>
+                        <p>Your Property Report is Ready</p>
                     </div>
                     <div class="content">
-                        <p>Hi there!</p>
-                        <p>Thank you for submitting your property for a Design Diagnosis report:</p>
-                        <p><strong>{property_name}</strong></p>
-                        <p>To verify your email and receive your report, click the link below:</p>
-                        <a href="{verification_link}" class="button">Verify Email & Get Report</a>
-                        <p style="color: #999; font-size: 12px;">Or copy this link: <br><code>{verification_link}</code></p>
+                        <p>Hi there,</p>
+                        <p>Thank you for submitting your property for a Design Diagnosis analysis:</p>
+                        <p style="font-weight: bold; color: #667eea;">{property_name}</p>
+                        <p>To verify your email and access your personalized report with vitality score and design recommendations, click the button below:</p>
+                        <center>
+                            <a href="{verification_link}" class="cta-button">Verify Email & View Report</a>
+                        </center>
+                        <p style="color: #666; font-size: 13px; text-align: center;">Or copy and paste this link:<br><code style="background: #fff; padding: 8px; display: inline-block; border-radius: 4px; margin-top: 10px;">{verification_link}</code></p>
+                        <div class="divider"></div>
+                        <p style="color: #999; font-size: 12px;">
+                            This verification link expires in 24 hours for security purposes.
+                        </p>
                     </div>
                     <div class="footer">
-                        <p>This link expires in 24 hours.</p>
-                        <p>Questions? Contact us at support@designdiagnosisapp.com</p>
+                        <p>Design Diagnosis • Powered by Rooms by Rachel</p>
+                        <p>Questions? Reply to this email or visit <strong>designdiagnosisapp.com</strong></p>
+                        <p style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                            © 2026 Rooms by Rachel. All rights reserved.
+                        </p>
                     </div>
                 </div>
             </body>
@@ -109,39 +134,54 @@ class EmailService:
     ):
         """Send report email with PDF attachment"""
         try:
-            subject = f"Your Design Diagnosis Report — {property_name}"
+            subject = f"Your Design Diagnosis Report — {property_name} ({grade})"
             html_content = f"""
             <html>
             <head>
                 <style>
-                    body {{ font-family: Arial, sans-serif; color: #333; }}
+                    body {{ font-family: Arial, sans-serif; color: #333; line-height: 1.6; }}
                     .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-                    .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 5px; text-align: center; }}
-                    .score {{ font-size: 48px; font-weight: bold; color: #667eea; text-align: center; margin: 20px 0; }}
-                    .grade {{ font-size: 24px; text-align: center; }}
-                    .content {{ padding: 20px; background: #f9f9f9; border-radius: 5px; margin: 20px 0; }}
-                    .footer {{ color: #999; font-size: 12px; text-align: center; margin-top: 20px; }}
+                    .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px 20px; border-radius: 8px; text-align: center; }}
+                    .header h1 {{ margin: 0; font-size: 28px; }}
+                    .score-card {{ background: #f0f4ff; border-left: 4px solid #667eea; padding: 20px; margin: 20px 0; border-radius: 6px; text-align: center; }}
+                    .score {{ font-size: 56px; font-weight: bold; color: #667eea; margin: 10px 0; }}
+                    .grade {{ font-size: 20px; color: #764ba2; font-weight: bold; }}
+                    .content {{ padding: 30px; background: #f9f9f9; border-radius: 8px; margin: 20px 0; }}
+                    .content ul {{ margin: 15px 0; padding-left: 20px; }}
+                    .content li {{ margin: 8px 0; }}
+                    .next-steps {{ background: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px; margin: 20px 0; border-radius: 4px; }}
+                    .footer {{ color: #999; font-size: 12px; text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; }}
                 </style>
             </head>
             <body>
                 <div class="container">
                     <div class="header">
                         <h1>✨ Your Design Diagnosis Report is Ready!</h1>
+                        <p>{property_name}</p>
+                    </div>
+                    <div class="score-card">
+                        <div class="score">{vitality_score}</div>
+                        <div>Vitality Score (out of 100)</div>
+                        <div class="grade">Grade: {grade}</div>
                     </div>
                     <div class="content">
-                        <h2>{property_name}</h2>
-                        <div class="score">{vitality_score}/100</div>
-                        <div class="grade">Grade: <strong>{grade}</strong></div>
-                        <p>Your {report_type.upper()} report is attached. Review it to discover:</p>
+                        <h2 style="color: #667eea; margin-top: 0;">What's in Your Report</h2>
                         <ul>
-                            <li>Your property's vitality score</li>
-                            <li>Key design gaps and opportunities</li>
-                            <li>Budget-friendly fixes with ROI estimates</li>
+                            <li><strong>Vitality Score Breakdown</strong> — Guest Comfort, Photos, Design Assessment</li>
+                            <li><strong>Key Recommendations</strong> — Prioritized fixes for maximum impact</li>
+                            <li><strong>Design Insights</strong> — Professional analysis grounded in interior design expertise</li>
                         </ul>
-                        <p>Have questions? Reply to this email or visit designdiagnosisapp.com</p>
+                        <div class="next-steps">
+                            <strong>📋 Next Steps:</strong><br>
+                            1. Review your attached PDF report<br>
+                            2. Prioritize fixes based on impact & budget<br>
+                            3. Want personalized guidance? Reply to schedule a consultation
+                        </div>
                     </div>
                     <div class="footer">
-                        <p>Powered by Rachel's Interior Design Expertise</p>
+                        <p>Design Diagnosis • Powered by Rachel's Interior Design Expertise</p>
+                        <p>Questions? Reply to this email or visit <strong>designdiagnosisapp.com</strong></p>
+                        <p style="margin-top: 15px;">© 2026 Rooms by Rachel. All rights reserved.</p>
                     </div>
                 </div>
             </body>
