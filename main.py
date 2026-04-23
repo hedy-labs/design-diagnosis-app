@@ -486,6 +486,25 @@ async def get_form():
     return HTMLResponse("<h1>❌ Form not found</h1><p>Expected at ./form.html</p>", status_code=404)
 
 
+@app.get("/payment-success", response_class=HTMLResponse)
+async def payment_success():
+    """Serve the payment success page"""
+    success_paths = [
+        "./payment-success.html",
+        "payment-success.html",
+        "/root/design-diagnosis-app/payment-success.html"
+    ]
+    
+    for success_path in success_paths:
+        if os.path.exists(success_path):
+            logger.info(f"📄 Serving payment-success.html from {success_path}")
+            with open(success_path, 'r') as f:
+                return f.read()
+    
+    logger.error("❌ payment-success.html not found in any expected location")
+    return HTMLResponse("<h1>❌ Success page not found</h1>", status_code=404)
+
+
 # ============================================================================
 # BACKGROUND TASKS
 # ============================================================================
