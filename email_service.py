@@ -53,54 +53,88 @@ class EmailService:
             <html>
             <head>
                 <style>
-                    body {{ font-family: Arial, sans-serif; color: #333; line-height: 1.6; }}
+                    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; color: #333; line-height: 1.6; }}
                     .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-                    .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px 20px; border-radius: 8px; text-align: center; }}
-                    .header h1 {{ margin: 0; font-size: 28px; }}
-                    .header p {{ margin: 10px 0 0 0; opacity: 0.9; }}
+                    .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; border-radius: 8px; text-align: center; }}
+                    .header h1 {{ margin: 0; font-size: 28px; font-weight: bold; }}
+                    .header p {{ margin: 10px 0 0 0; opacity: 0.95; font-size: 16px; }}
                     .content {{ padding: 30px; background: #f9f9f9; border-radius: 8px; margin: 20px 0; }}
+                    .content p {{ margin: 12px 0; color: #555; }}
+                    .property-name {{ font-weight: bold; color: #667eea; font-size: 16px; margin: 15px 0; }}
                     .cta-button {{ 
                         display: inline-block; 
-                        background: #667eea; 
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                         color: white; 
-                        padding: 14px 28px; 
+                        padding: 16px 36px; 
                         text-decoration: none; 
                         border-radius: 6px; 
-                        margin: 20px 0;
+                        margin: 25px 0;
                         font-weight: bold;
+                        font-size: 16px;
                         cursor: pointer;
                     }}
-                    .cta-button:hover {{ background: #764ba2; }}
-                    .footer {{ color: #999; font-size: 12px; text-align: center; margin-top: 30px; }}
-                    .divider {{ border-top: 1px solid #ddd; margin: 20px 0; }}
+                    .cta-button:hover {{ opacity: 0.9; }}
+                    .link-code {{ background: white; padding: 12px; border-radius: 4px; display: inline-block; margin-top: 10px; font-family: monospace; font-size: 12px; word-break: break-all; max-width: 100%; }}
+                    .features {{ background: #f0f4ff; border-left: 4px solid #667eea; padding: 20px; margin: 20px 0; border-radius: 6px; }}
+                    .features h3 {{ color: #667eea; margin-top: 0; font-size: 16px; }}
+                    .features ul {{ margin: 10px 0; padding-left: 20px; }}
+                    .features li {{ margin: 8px 0; color: #555; }}
+                    .footer {{ color: #999; font-size: 13px; text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; }}
+                    .footer p {{ margin: 8px 0; }}
+                    .footer a {{ color: #667eea; text-decoration: none; }}
+                    .footer a:hover {{ text-decoration: underline; }}
+                    .social-links {{ margin-top: 15px; }}
+                    .social-links a {{ display: inline-block; margin: 0 8px; color: #667eea; text-decoration: none; font-weight: 500; }}
                 </style>
             </head>
             <body>
                 <div class="container">
                     <div class="header">
                         <h1>✨ Design Diagnosis</h1>
-                        <p>Your Property Report is Ready</p>
+                        <p>Your Property Analysis Awaits</p>
                     </div>
+                    
                     <div class="content">
-                        <p>Hi there,</p>
-                        <p>Thank you for submitting your property for a Design Diagnosis analysis:</p>
-                        <p style="font-weight: bold; color: #667eea;">{property_name}</p>
-                        <p>To verify your email and access your personalized report with vitality score and design recommendations, click the button below:</p>
+                        <p>Hi there!</p>
+                        <p>Thank you for submitting your property for a Design Diagnosis analysis. We're excited to share your results!</p>
+                        
+                        <div class="property-name">{property_name}</div>
+                        
+                        <p>Click the button below to verify your email and instantly access your personalized report:</p>
+                        
                         <center>
-                            <a href="{verification_link}" class="cta-button">Verify Email & View Report</a>
+                            <a href="{verification_link}" class="cta-button">Verify Email & Get Report</a>
                         </center>
-                        <p style="color: #666; font-size: 13px; text-align: center;">Or copy and paste this link:<br><code style="background: #fff; padding: 8px; display: inline-block; border-radius: 4px; margin-top: 10px;">{verification_link}</code></p>
-                        <div class="divider"></div>
+                        
+                        <p style="color: #666; font-size: 12px; text-align: center;">Or copy and paste this link:<br><code class="link-code">{verification_link}</code></p>
+                        
+                        <div class="features">
+                            <h3>📊 What You'll Receive:</h3>
+                            <ul>
+                                <li><strong>Vitality Score</strong> (0-100) measuring your listing's design quality</li>
+                                <li><strong>Grade (A-F)</strong> with professional assessment</li>
+                                <li><strong>Priority Recommendations</strong> ranked by impact</li>
+                                <li><strong>Expert Analysis</strong> grounded in interior design principles</li>
+                            </ul>
+                        </div>
+                        
                         <p style="color: #999; font-size: 12px;">
-                            This verification link expires in 24 hours for security purposes.
+                            ⏰ This verification link expires in 24 hours for security.
                         </p>
                     </div>
+                    
                     <div class="footer">
-                        <p>Design Diagnosis • Powered by Rooms by Rachel</p>
-                        <p>Questions? Reply to this email or visit <strong>designdiagnosisapp.com</strong></p>
-                        <p style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
-                            © 2026 Rooms by Rachel. All rights reserved.
-                        </p>
+                        <p><strong>Rooms by Rachel</strong></p>
+                        <p>Design Diagnosis — Expert Analysis for Short-Term Rentals</p>
+                        
+                        <div class="social-links">
+                            <a href="https://tiktok.com/@rooms.by.rachel">TikTok</a> • 
+                            <a href="https://instagram.com/@rooms.by.rachel">Instagram</a> • 
+                            <a href="https://roomsbyrachel.com">Website</a>
+                        </div>
+                        
+                        <p style="margin-top: 15px;">Questions? <a href="mailto:support@designdiagnosisapp.com">Contact us</a></p>
+                        <p>© 2026 Rooms by Rachel. All rights reserved.</p>
                     </div>
                 </div>
             </body>
