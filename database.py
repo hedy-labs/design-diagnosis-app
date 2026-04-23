@@ -24,6 +24,16 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 @dataclass
+class User:
+    id: int
+    email: str
+    is_verified: bool
+    verification_count: int
+    last_verified_at: str
+    created_at: str
+
+
+@dataclass
 class FormSubmission:
     id: int
     email: str
@@ -105,6 +115,18 @@ class DesignDiagnosisDB:
         """Initialize database tables with all necessary columns"""
         conn = self.get_connection()
         cursor = conn.cursor()
+        
+        # Users table (tracks verified emails for zero-friction returns)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                is_verified BOOLEAN DEFAULT 0,
+                verification_count INTEGER DEFAULT 0,
+                last_verified_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
         
         # Form Submissions table
         cursor.execute("""
@@ -237,6 +259,92 @@ class DesignDiagnosisDB:
             conn.commit()
         except Exception as e:
             logger.warning(f"⚠️  Migration warning: {e}")
+    
+    # ========================================================================
+    # USER MANAGEMENT (ZERO-FRICTION RETURNS)
+    # ========================================================================
+    
+    def get_or_create_user(self, email: str) -> User:
+        """Get existing user or create new one"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        # Try to get existing user
+        cursor.execute("SELECT * FROM users WHERE email = ?", (email.lower(),))
+        row = cursor.fetchone()
+        
+        if row:
+            return User(
+                id=row[0],
+                email=row[1],
+                is_verified=bool(row[2]),
+                verification_count=row[3],
+                last_verified_at=row[4],
+                created_at=row[5]
+            )
+        
+        # Create new user
+        cursor.execute("""
+            INSERT INTO users (email, is_verified, verification_count)
+            VALUES (?, ?, ?)
+        """, (email.lower(), 0, 0))
+        conn.commit()
+        
+        user_id = cursor.lastrowid
+        return self.get_user(user_id)
+    
+    def get_user(self, user_id: int) -> Optional[User]:
+        """Get user by ID"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+        row = cursor.fetchone()
+        
+        if row:
+            return User(
+                id=row[0],
+                email=row[1],
+                is_verified=bool(row[2]),
+                verification_count=row[3],
+                last_verified_at=row[4],
+                created_at=row[5]
+            )
+        return None
+    
+    def get_user_by_email(self, email: str) -> Optional[User]:
+        """Get user by email"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM users WHERE email = ?", (email.lower(),))
+        row = cursor.fetchone()
+        
+        if row:
+            return User(
+                id=row[0],
+                email=row[1],
+                is_verified=bool(row[2]),
+                verification_count=row[3],
+                last_verified_at=row[4],
+                created_at=row[5]
+            )
+        return None
+    
+    def mark_user_verified(self, user_id: int):
+        """Mark user as verified"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            UPDATE users 
+            SET is_verified = 1, 
+                verification_count = verification_count + 1,
+                last_verified_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        """, (user_id,))
+        conn.commit()
+        logger.info(f"✅ User {user_id} marked as verified")
     
     # ========================================================================
     # FORM SUBMISSION OPERATIONS

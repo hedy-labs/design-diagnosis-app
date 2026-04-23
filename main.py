@@ -200,13 +200,19 @@ async def health_check():
 @app.post("/api/submit-form", response_model=FormSubmitResponse)
 async def submit_form(form_data: FormSubmitInput, background_tasks: BackgroundTasks, request: Request):
     """
-    Submit property form and trigger email verification flow
+    Submit property form with zero-friction for returning verified users
     """
     try:
         if not db:
             raise HTTPException(status_code=503, detail="Database service unavailable")
         
         logger.info(f"📝 Form submission from {form_data.email} for {form_data.property_name}")
+        
+        # Check if user is already verified (zero-friction return)
+        user = db.get_or_create_user(form_data.email)
+        is_returning_verified = user.is_verified
+        
+        logger.info(f"🔍 User status: {'Returning Verified ✅' if is_returning_verified else 'New/Unverified'}")
         
         # Save form submission
         submission = db.create_form_submission(
@@ -224,7 +230,33 @@ async def submit_form(form_data: FormSubmitInput, background_tasks: BackgroundTa
         
         logger.info(f"✅ Submission saved with ID: {submission.id}")
         
-        # Generate verification token
+        # ZERO-FRICTION PATH: If user already verified, skip email verification
+        if is_returning_verified:
+            logger.info(f"⚡ Returning verified user ({form_data.email}). Skipping email verification.")
+            
+            if form_data.report_type == "free":
+                # Free report: generate immediately
+                background_tasks.add_task(
+                    generate_and_send_report,
+                    submission_id=submission.id,
+                    report_type="free"
+                )
+                return FormSubmitResponse(
+                    success=True,
+                    submission_id=submission.id,
+                    message="✅ Welcome back! Your report is being generated. Check your email in 2-5 minutes.",
+                    next_step="report_generating"
+                )
+            else:
+                # Premium: ready to checkout
+                return FormSubmitResponse(
+                    success=True,
+                    submission_id=submission.id,
+                    message="✅ Ready to checkout! Proceeding to payment.",
+                    next_step="stripe_checkout"
+                )
+        
+        # STANDARD PATH: New user or unverified, send verification email
         verification_token = str(uuid.uuid4())
         db.create_email_verification(
             submission_id=submission.id,
@@ -283,9 +315,15 @@ async def verify_email(background_tasks: BackgroundTasks, token: str = Query(...
                 "<h1>✅ Already Verified</h1><p>Your email has already been verified.</p>"
             )
         
-        # Mark email as verified
+        # Mark email as verified (both in verifications table AND mark user as verified)
         db.mark_email_verified(verification.id)
         logger.info(f"✅ Email verified: {verification.email}")
+        
+        # Also mark the USER as verified for zero-friction future returns
+        user = db.get_user_by_email(verification.email)
+        if user:
+            db.mark_user_verified(user.id)
+            logger.info(f"⚡ User marked as verified for zero-friction returns")
         
         # Get submission
         submission = db.get_form_submission(verification.submission_id)
