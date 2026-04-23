@@ -146,49 +146,94 @@ class EmailService:
             <html>
             <head>
                 <style>
-                    body {{ font-family: Arial, sans-serif; color: #333; line-height: 1.6; }}
+                    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; color: #333; line-height: 1.6; }}
                     .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-                    .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px 20px; border-radius: 8px; text-align: center; }}
-                    .header h1 {{ margin: 0; font-size: 28px; }}
-                    .score-card {{ background: #f0f4ff; border-left: 4px solid #667eea; padding: 20px; margin: 20px 0; border-radius: 6px; text-align: center; }}
+                    .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; border-radius: 8px; text-align: center; }}
+                    .header h1 {{ margin: 0; font-size: 28px; font-weight: bold; }}
+                    .header p {{ margin: 10px 0 0 0; opacity: 0.95; font-size: 16px; }}
+                    .score-card {{ background: #f0f4ff; border-left: 4px solid #667eea; padding: 30px; margin: 20px 0; border-radius: 8px; text-align: center; }}
                     .score {{ font-size: 56px; font-weight: bold; color: #667eea; margin: 10px 0; }}
-                    .grade {{ font-size: 20px; color: #764ba2; font-weight: bold; }}
+                    .grade {{ font-size: 18px; color: #764ba2; font-weight: bold; margin-top: 10px; }}
                     .content {{ padding: 30px; background: #f9f9f9; border-radius: 8px; margin: 20px 0; }}
+                    .content h2 {{ color: #667eea; margin-top: 0; font-size: 20px; }}
                     .content ul {{ margin: 15px 0; padding-left: 20px; }}
-                    .content li {{ margin: 8px 0; }}
-                    .next-steps {{ background: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px; margin: 20px 0; border-radius: 4px; }}
-                    .footer {{ color: #999; font-size: 12px; text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; }}
+                    .content li {{ margin: 10px 0; color: #555; }}
+                    .cta-button {{
+                        display: inline-block;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        padding: 14px 32px;
+                        text-decoration: none;
+                        border-radius: 6px;
+                        font-weight: bold;
+                        margin: 20px 0;
+                        font-size: 16px;
+                    }}
+                    .next-steps {{ background: #e8f5e9; border-left: 4px solid #4caf50; padding: 20px; margin: 20px 0; border-radius: 6px; }}
+                    .next-steps strong {{ color: #2e7d32; display: block; margin-bottom: 10px; }}
+                    .next-steps ol {{ margin: 10px 0; padding-left: 20px; color: #555; }}
+                    .next-steps li {{ margin: 8px 0; }}
+                    .footer {{ color: #999; font-size: 13px; text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; }}
+                    .footer p {{ margin: 8px 0; }}
+                    .footer a {{ color: #667eea; text-decoration: none; }}
+                    .footer a:hover {{ text-decoration: underline; }}
+                    .social-links {{ margin-top: 15px; }}
+                    .social-links a {{ display: inline-block; margin: 0 8px; color: #667eea; text-decoration: none; font-weight: 500; }}
+                    .divider {{ border-top: 1px solid #e5e7eb; margin: 20px 0; }}
                 </style>
             </head>
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1>✨ Your Design Diagnosis Report is Ready!</h1>
-                        <p>{property_name}</p>
+                        <h1>✨ Your Design Diagnosis Report</h1>
+                        <p>Complete Analysis for: <strong>{property_name}</strong></p>
                     </div>
+                    
                     <div class="score-card">
-                        <div class="score">{vitality_score}</div>
-                        <div>Vitality Score (out of 100)</div>
+                        <div>Your Vitality Score</div>
+                        <div class="score">{vitality_score}/100</div>
                         <div class="grade">Grade: {grade}</div>
                     </div>
+                    
                     <div class="content">
-                        <h2 style="color: #667eea; margin-top: 0;">What's in Your Report</h2>
+                        <h2>📊 What's Inside Your Report</h2>
                         <ul>
-                            <li><strong>Vitality Score Breakdown</strong> — Guest Comfort, Photos, Design Assessment</li>
-                            <li><strong>Key Recommendations</strong> — Prioritized fixes for maximum impact</li>
-                            <li><strong>Design Insights</strong> — Professional analysis grounded in interior design expertise</li>
+                            <li><strong>Vitality Score Breakdown</strong> — Guest Comfort, Photo Quality, Design Assessment</li>
+                            <li><strong>Priority Recommendations</strong> — Ranked by impact and implementation cost</li>
+                            <li><strong>Expert Design Insights</strong> — Grounded in professional interior design principles</li>
+                            <li><strong>Action Plan</strong> — Clear next steps to improve your listing</li>
                         </ul>
+                        
+                        <center>
+                            <a href="https://designdiagnosisapp.com" class="cta-button">View Full Dashboard</a>
+                        </center>
+                        
                         <div class="next-steps">
-                            <strong>📋 Next Steps:</strong><br>
-                            1. Review your attached PDF report<br>
-                            2. Prioritize fixes based on impact & budget<br>
-                            3. Want personalized guidance? Reply to schedule a consultation
+                            <strong>🚀 Here's What to Do Next:</strong>
+                            <ol>
+                                <li>Download and review your attached PDF report</li>
+                                <li>Prioritize fixes based on your budget and timeline</li>
+                                <li>Start implementing high-impact recommendations</li>
+                                <li>Track your progress and re-submit in 30 days</li>
+                            </ol>
+                            <p style="margin-top: 15px; color: #2e7d32;"><strong>Need help?</strong> Reply to this email to schedule a consultation with Rachel ($99 for 15 min).</p>
                         </div>
                     </div>
+                    
                     <div class="footer">
-                        <p>Design Diagnosis • Powered by Rachel's Interior Design Expertise</p>
-                        <p>Questions? Reply to this email or visit <strong>designdiagnosisapp.com</strong></p>
-                        <p style="margin-top: 15px;">© 2026 Rooms by Rachel. All rights reserved.</p>
+                        <p><strong>Rooms by Rachel</strong></p>
+                        <p>Design Diagnosis — Expert Analysis for Short-Term Rentals</p>
+                        
+                        <div class="social-links">
+                            <a href="https://tiktok.com/@rooms.by.rachel">TikTok</a> • 
+                            <a href="https://instagram.com/rooms.by.rachel">Instagram</a> • 
+                            <a href="https://roomsbyrachel.com">Website</a>
+                        </div>
+                        
+                        <div class="divider"></div>
+                        
+                        <p>Questions? <a href="mailto:support@designdiagnosisapp.com">Contact us</a></p>
+                        <p>© 2026 Rooms by Rachel. All rights reserved.</p>
                     </div>
                 </div>
             </body>
