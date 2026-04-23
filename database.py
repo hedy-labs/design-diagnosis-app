@@ -69,7 +69,8 @@ class Report:
     grade: str
     file_name: str
     report_type: str
-    created_at: str
+    html_content: Optional[str] = None  # New: store HTML report
+    created_at: str = ""
 
 
 @dataclass
@@ -388,21 +389,31 @@ class DesignDiagnosisDB:
     def create_report(
         self,
         submission_id: int,
-        property_name: str,
-        vitality_score: float,
-        grade: str,
-        file_name: str,
-        report_type: str
+        vitality_score: float = 0,
+        grade: str = "F",
+        html_content: Optional[str] = None,
+        report_type: str = "free",
+        property_name: Optional[str] = None,
+        file_name: Optional[str] = None
     ) -> Report:
-        """Create report record"""
+        """Create report record (flexible parameters for backwards compatibility)"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
+        # Ensure table has html_content column
+        try:
+            cursor.execute("""
+                ALTER TABLE reports ADD COLUMN html_content TEXT
+            """)
+            conn.commit()
+        except:
+            pass  # Column likely already exists
+        
         cursor.execute("""
             INSERT INTO reports
-            (submission_id, property_name, vitality_score, grade, file_name, report_type)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (submission_id, property_name, vitality_score, grade, file_name, report_type))
+            (submission_id, property_name, vitality_score, grade, file_name, report_type, html_content)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (submission_id, property_name or "", vitality_score, grade, file_name or "", report_type, html_content))
         conn.commit()
         
         report_id = cursor.lastrowid

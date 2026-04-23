@@ -31,6 +31,7 @@ class DesignDiagnosisPDF(FPDF):
         """Add header to each page"""
         self.set_font("Helvetica", "B", 20)
         self.set_text_color(102, 126, 234)  # Purple
+        # Note: fpdf2 doesn't support emojis, use plain text
         self.cell(0, 10, "Design Diagnosis Report", 0, 1, "C")
         self.ln(5)
     
@@ -81,10 +82,10 @@ def generate_pdf_report(
         pdf = DesignDiagnosisPDF()
         pdf.add_page()
         
-        # Title section
+        # Title section (no emojis for fpdf2 compatibility)
         pdf.set_font("Helvetica", "B", 24)
         pdf.set_text_color(102, 126, 234)
-        pdf.cell(0, 15, "✨ Design Diagnosis", 0, 1, "C")
+        pdf.cell(0, 15, "Design Diagnosis", 0, 1, "C")
         
         pdf.set_font("Helvetica", "", 16)
         pdf.set_text_color(100, 100, 100)
@@ -127,6 +128,10 @@ def generate_pdf_report(
             priority = rec.get('priority', '')
             title = rec.get('title', '')
             description = rec.get('description', '')
+            
+            # Remove emojis from text for PDF compatibility
+            title = ''.join(c for c in title if ord(c) < 128 or ord(c) > 127 and c.isascii())
+            description = ''.join(c for c in description if ord(c) < 128 or ord(c) > 127 and c.isascii())
             
             pdf.set_font("Helvetica", "B", 11)
             pdf.cell(0, 6, f"{i}. [{priority}] {title}", 0, 1)
