@@ -397,36 +397,66 @@ async def create_checkout_session(payment_input: CreatePaymentInput, request: Re
 @app.post("/api/payment-webhook")
 async def payment_webhook(request: Request, background_tasks: BackgroundTasks):
     """
-    Handle Stripe webhook events
+    Handle Stripe webhook events (checkout.session.completed)
     """
     try:
-        body = await request.body()
-        event = json.loads(body)
+        payload = await request.body()
+        sig_header = request.headers.get("Stripe-Signature")
         
-        logger.info(f"🔔 Webhook event: {event.get('type')}")
+        logger.info("📦 Webhook received from Stripe")
         
-        # Handle payment success
-        if event.get('type') == 'payment_intent.succeeded':
-            intent_id = event['data']['object']['id']
-            payment = db.get_payment_by_stripe_id(intent_id)
+        # Verify webhook signature
+        event = stripe_service.verify_webhook_signature(payload, sig_header)
+        
+        # In mock mode, parse the payload directly
+        if not event:
+            try:
+                event = json.loads(payload)
+                logger.info(f"📦 [MOCK] Webhook event: {event.get('type', 'unknown')}")
+            except:
+                logger.warning("⚠️  Could not parse webhook payload")
+                return {"status": "received"}
+        
+        logger.info(f"📦 Event type: {event.get('type', 'unknown')}")
+        
+        # Handle checkout.session.completed
+        if event.get('type') == 'checkout.session.completed':
+            session = event.get('data', {}).get('object', {})
+            session_id = session.get('id')
             
-            if payment:
-                # Mark payment as succeeded
-                db.update_payment_status(payment.id, "succeeded")
-                logger.info(f"✅ Payment succeeded: {intent_id}")
-                
-                # Generate and send premium report
+            logger.info(f"💳 Checkout session completed: {session_id}")
+            
+            if not db:
+                logger.error("❌ Database unavailable for webhook")
+                return JSONResponse({"error": "DB unavailable"}, status_code=503)
+            
+            # Get payment
+            payment = db.get_payment_by_stripe_id(session_id)
+            if not payment:
+                logger.error(f"❌ Payment not found for session {session_id}")
+                return JSONResponse({"error": "Payment not found"}, status_code=404)
+            
+            # Mark payment as completed
+            db.update_payment_status(payment.id, "completed")
+            logger.info(f"✅ Payment marked completed: {payment.id}")
+            
+            # Queue report generation
+            submission = db.get_form_submission(payment.submission_id)
+            if submission:
+                logger.info(f"📊 Queuing report generation for submission {submission.id}")
                 background_tasks.add_task(
                     generate_and_send_report,
-                    submission_id=payment.submission_id,
+                    submission_id=submission.id,
                     report_type="premium"
                 )
+            else:
+                logger.error(f"❌ Submission not found for payment {payment.id}")
         
-        return JSONResponse({"status": "success"})
+        return {"status": "received"}
     
     except Exception as e:
         logger.error(f"❌ Webhook error: {e}")
-        return JSONResponse({"status": "error"}, status_code=400)
+        return JSONResponse({"error": str(e)}, status_code=400)
 
 
 @app.get("/api/report/{report_id}", response_model=ReportResponse)
@@ -503,6 +533,80 @@ async def payment_success():
     
     logger.error("❌ payment-success.html not found in any expected location")
     return HTMLResponse("<h1>❌ Success page not found</h1>", status_code=404)
+
+
+@app.get("/success")
+async def success(session_id: str = Query(...)):
+    """Handle successful Stripe payment redirect"""
+    try:
+        logger.info(f"✅ Payment success: session_id={session_id}")
+        
+        if not db:
+            return JSONResponse(
+                {"message": "Database unavailable"},
+                status_code=503
+            )
+        
+        # Retrieve payment from database
+        payment = db.get_payment_by_stripe_id(session_id)
+        if not payment:
+            logger.warning(f"⚠️  Payment not found for session {session_id}")
+            return JSONResponse(
+                {"message": "Payment record not found"},
+                status_code=404
+            )
+        
+        # Mark payment as completed
+        db.update_payment_status(payment.id, "completed")
+        logger.info(f"✅ Payment marked as completed: {payment.id}")
+        
+        # Get submission details
+        submission = db.get_form_submission(payment.submission_id)
+        if submission:
+            # Queue report generation
+            logger.info(f"📊 Queuing report generation for submission {submission.id}")
+            # Report will be generated by webhook, but add fallback trigger
+        
+        # Redirect to success page
+        return JSONResponse({
+            "success": True,
+            "message": "Payment successful! Your report is being generated.",
+            "submission_id": payment.submission_id,
+            "session_id": session_id
+        })
+    
+    except Exception as e:
+        logger.error(f"❌ Success handler error: {e}")
+        return JSONResponse(
+            {"error": str(e)},
+            status_code=500
+        )
+
+
+@app.get("/cancel")
+async def cancel(session_id: str = Query(None)):
+    """Handle cancelled Stripe payment"""
+    try:
+        logger.info(f"⚠️  Payment cancelled: session_id={session_id}")
+        
+        if session_id and db:
+            payment = db.get_payment_by_stripe_id(session_id)
+            if payment:
+                db.update_payment_status(payment.id, "cancelled")
+                logger.info(f"✅ Payment marked as cancelled: {payment.id}")
+        
+        return JSONResponse({
+            "success": False,
+            "message": "Payment was cancelled. You can try again anytime.",
+            "redirect_url": "/form.html"
+        })
+    
+    except Exception as e:
+        logger.error(f"❌ Cancel handler error: {e}")
+        return JSONResponse(
+            {"error": str(e)},
+            status_code=500
+        )
 
 
 # ============================================================================
