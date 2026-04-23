@@ -557,8 +557,36 @@ async def get_form():
 
 
 @app.get("/payment-success", response_class=HTMLResponse)
-async def payment_success():
-    """Serve the payment success page"""
+async def payment_success(session_id: str = Query(None), background_tasks: BackgroundTasks = None):
+    """
+    Serve payment success page + trigger report generation
+    """
+    try:
+        # If session_id provided, trigger report generation immediately
+        if session_id and db and background_tasks:
+            logger.info(f"💳 Processing payment success for session: {session_id}")
+            
+            # Get payment
+            payment = db.get_payment_by_stripe_id(session_id)
+            if payment:
+                # Mark as completed
+                db.update_payment_status(payment.id, "completed")
+                logger.info(f"✅ Payment marked completed: {payment.id}")
+                
+                # Get submission
+                submission = db.get_form_submission(payment.submission_id)
+                if submission:
+                    # Queue report generation immediately
+                    background_tasks.add_task(
+                        generate_and_send_report,
+                        submission_id=submission.id,
+                        report_type="premium"
+                    )
+                    logger.info(f"📊 Premium report generation queued for submission {submission.id}")
+    except Exception as e:
+        logger.error(f"⚠️  Payment success handler error: {e}")
+    
+    # Serve success page
     success_paths = [
         "./payment-success.html",
         "payment-success.html",
