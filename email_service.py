@@ -168,12 +168,22 @@ class EmailService:
     ):
         """Send report email with PDF attachment"""
         try:
+            # VALIDATE REPORT TYPE STRICTLY
+            if not report_type or report_type not in ["free", "premium"]:
+                logger.error(f"❌ CRITICAL: send_report_email() received invalid report_type='{report_type}' (expected 'free' or 'premium'). Defaulting to 'free'.")
+                report_type = "free"
+            
+            logger.info(f"📧 SENDING {report_type.upper()} REPORT EMAIL")
+            logger.info(f"   → Recipient: {email}")
+            logger.info(f"   → Property: {property_name}")
+            logger.info(f"   → Score: {vitality_score}/100 (Grade {grade})")
+            
             # Ensure pdf_path is absolute and in the reports directory
             if not os.path.isabs(pdf_path):
                 reports_dir = os.getenv("REPORT_OUTPUT_DIR", "./reports")
                 pdf_path = os.path.join(reports_dir, os.path.basename(pdf_path))
             
-            logger.info(f"📎 Looking for attachment at: {pdf_path}")
+            logger.info(f"📎 PDF attachment: {pdf_path}")
             
             subject = f"Your Design Diagnosis Report — {property_name} ({grade})"
             html_content = f"""
