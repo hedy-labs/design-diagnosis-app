@@ -388,6 +388,199 @@ class ReportBuilder:
             'F': '#7f1d1d'
         }
         return colors.get(grade, '#6b7280')
+    
+    def generate_analysis_text(self) -> str:
+        """
+        Generate 'The Problem' narrative explaining the score.
+        
+        Returns: 2-3 paragraph analysis in Rachel's voice
+        """
+        property_name = self.submission.get('property_name', 'Your property')
+        score = self.vitality['vitality_score']
+        grade = self.vitality['grade']
+        comfort_score = self.vitality['comfort_score']
+        photo_score = self.vitality['photo_score']
+        design_score = self.vitality['design_score']
+        checklist = self.submission.get('guest_comfort_checklist', [])
+        
+        # Identify key missing items
+        all_items = set(VitalityScorer.TIER_1_ITEMS.keys()) | \
+                   set(VitalityScorer.TIER_2_ITEMS.keys()) | \
+                   set(VitalityScorer.TIER_3_ITEMS.keys())
+        missing = list(all_items - set(checklist))[:3]  # Top 3 missing items
+        
+        missing_text = ", ".join(missing) if missing else "various comfort items"
+        
+        # Grade-specific narrative
+        if score >= 90:
+            intro = f"🎉 Excellent work! {property_name} is move-in ready and guest-focused. You've created a beautiful, functional space that guests will love."
+            body = f"Your score of {score}/100 (Grade {grade}: {self.vitality['grade_label']}) reflects strong fundamentals across all dimensions. Minor polish opportunities remain, but your property is positioned for success."
+            cta = "Focus on maintaining consistency and gathering guest reviews to build social proof."
+        
+        elif score >= 80:
+            intro = f"👍 {property_name} has strong bones and good guest fundamentals. You're in the solid 'bookable' range with just a few intentional upgrades needed."
+            body = f"Your score of {score}/100 (Grade {grade}: {self.vitality['grade_label']}) shows you've covered most essentials. The missing {missing_text} are straightforward fixes that will significantly improve guest perception without major investment."
+            cta = "Add the three high-impact fixes below and re-submit in 30 days for a rescoring."
+        
+        elif score >= 70:
+            intro = f"⚠️ {property_name} has potential but needs strategic improvements. Right now, guests will notice gaps that signal 'rushed listing.'"
+            body = f"Your score of {score}/100 (Grade {grade}: {self.vitality['grade_label']}) reflects {missing_text} missing from guest-critical categories. These aren't cosmetic—they're the difference between a 4-star and 5-star experience. The good news: all are solvable with focused effort and modest budget."
+            cta = "Implement the three fixes below within 2 weeks and you'll move into the 'Strong' tier."
+        
+        else:  # Score < 70
+            intro = f"🚨 {property_name} needs urgent attention to be competitive. Multiple critical gaps are creating 'guest friction points' that will harm bookings and reviews."
+            body = f"Your score of {score}/100 (Grade {grade}: {self.vitality['grade_label']}) shows significant work ahead, but this is fixable. The missing {missing_text} are foundational comfort signals. Once these are in place, design polish can follow."
+            cta = "Prioritize the three critical fixes below over the next 30 days. Budget: $300–600."
+        
+        return f"{intro} {body} {cta}"
+    
+    def generate_top_three_fixes(self) -> List[Dict]:
+        """
+        Generate top 3 highest-impact, most-urgent fixes with costs.
+        
+        Returns: List of {title, description, cost_low, cost_high, impact}
+        """
+        recommendations = self._generate_recommendations()[:3]  # Top 3 by priority
+        
+        # Enrich with cost data
+        cost_lookup = {
+            'bedside_lamps': (60, 150),
+            'bedside_tables': (80, 200),
+            'entry_hooks': (20, 60),
+            'shoe_rack': (30, 80),
+            'plunger': (15, 40),
+            'shower_hooks': (15, 40),
+            'towel_hooks': (15, 40),
+            'welcome_basket': (25, 75),
+            'bathroom_caddy': (20, 50),
+            'desk_chair': (100, 300),
+            'sofa_side_tables': (100, 250),
+            'power_bars': (25, 60),
+        }
+        
+        fixes = []
+        for i, rec in enumerate(recommendations, 1):
+            # Extract item from description if possible
+            title = rec['title']
+            description = rec['description']
+            
+            # Estimate cost (default range)
+            cost_low = 100
+            cost_high = 300
+            
+            # Try to match known items for better cost estimates
+            for item, (low, high) in cost_lookup.items():
+                if item.replace('_', ' ') in description.lower():
+                    cost_low, cost_high = low, high
+                    break
+            
+            fixes.append({
+                'priority': i,
+                'title': title,
+                'description': description,
+                'cost_low': cost_low,
+                'cost_high': cost_high,
+                'impact': rec.get('impact', 'High'),
+                'roi': '15-25% booking increase'  # Standard ROI for professional staging
+            })
+        
+        return fixes
+    
+    def generate_shopping_list(self) -> List[Dict]:
+        """
+        Generate structured shopping list by budget tier and category.
+        
+        Returns: List of {category, tier, items: [{name, price, url, why}]}
+        """
+        # Identify missing items from checklist
+        checklist = self.submission.get('guest_comfort_checklist', [])
+        all_items = set(VitalityScorer.TIER_1_ITEMS.keys()) | \
+                   set(VitalityScorer.TIER_2_ITEMS.keys()) | \
+                   set(VitalityScorer.TIER_3_ITEMS.keys())
+        missing = list(all_items - set(checklist))
+        
+        # Amazon affiliate base (to be populated with Rachel's ID)
+        # For now, using placeholder URLs
+        amazon_base = "https://amazon.com/s?k="
+        affiliate_tag = "&tag=roomsbyrachel-20"  # Placeholder
+        
+        shopping_list = []
+        
+        # Tier 1: Critical (Value: $20-80)
+        if 'bedside_tables' in missing or 'bedside_lamps' in missing:
+            shopping_list.append({
+                'category': 'Bedroom',
+                'tier': 'Value',
+                'item': 'Bedside Tables (Set of 2)',
+                'price_low': 60,
+                'price_high': 120,
+                'url': f"{amazon_base}nightstands+white{affiliate_tag}",
+                'why': 'Critical comfort signal. Guests expect a table next to the bed for phone, water, lamp.'
+            })
+            shopping_list.append({
+                'category': 'Bedroom',
+                'tier': 'Value',
+                'item': 'Bedside Lamps (Set of 2)',
+                'price_low': 40,
+                'price_high': 100,
+                'url': f"{amazon_base}bedside+lamps+modern{affiliate_tag}",
+                'why': 'Functional + psychological comfort. Guests need independent light control.'
+            })
+        
+        if 'plunger' in missing:
+            shopping_list.append({
+                'category': 'Bathroom',
+                'tier': 'Value',
+                'item': 'Plunger + Brush Holder',
+                'price_low': 15,
+                'price_high': 40,
+                'url': f"{amazon_base}toilet+plunger+modern{affiliate_tag}",
+                'why': 'Non-negotiable. Guests will be very uncomfortable without this.'
+            })
+        
+        if 'entry_hooks' in missing or 'shoe_rack' in missing:
+            shopping_list.append({
+                'category': 'Entry',
+                'tier': 'Value',
+                'item': 'Entry Coat Hooks (3-4 piece)',
+                'price_low': 20,
+                'price_high': 60,
+                'url': f"{amazon_base}wall+hooks+modern{affiliate_tag}",
+                'why': 'First-impression friction killer. Guests need obvious place for jackets/bags.'
+            })
+            shopping_list.append({
+                'category': 'Entry',
+                'tier': 'Value',
+                'item': 'Slim Shoe Rack',
+                'price_low': 30,
+                'price_high': 80,
+                'url': f"{amazon_base}shoe+rack+entryway{affiliate_tag}",
+                'why': 'Functional necessity. Shows you expect guests to stay, not visit.'
+            })
+        
+        if 'sofa_side_tables' in missing:
+            shopping_list.append({
+                'category': 'Living Room',
+                'tier': 'Signature',
+                'item': 'Sofa Side Table (C-shape)',
+                'price_low': 80,
+                'price_high': 200,
+                'url': f"{amazon_base}c+table+sofa+side{affiliate_tag}",
+                'why': 'Functional anchor. Guests need place for drinks, remotes, phones while sitting.'
+            })
+        
+        if 'bathroom_caddy' in missing:
+            shopping_list.append({
+                'category': 'Bathroom',
+                'tier': 'Value',
+                'item': 'Shower Caddy / Stool',
+                'price_low': 20,
+                'price_high': 50,
+                'url': f"{amazon_base}shower+caddy+teak{affiliate_tag}",
+                'why': 'Shower utility essential. Guests need shelf for toiletries.'
+            })
+        
+        return shopping_list
 
 
 def generate_report(submission_data: Dict) -> Dict:
@@ -397,6 +590,9 @@ def generate_report(submission_data: Dict) -> Dict:
     Returns: {
         'html': '<html report>',
         'vitality_data': { score, grade, etc },
+        'analysis': 'The Problem narrative',
+        'shopping_list': [{category, tier, items}],
+        'top_three_fixes': [{priority, title, cost_low, cost_high}],
         'success': True/False
     }
     """
@@ -412,15 +608,24 @@ def generate_report(submission_data: Dict) -> Dict:
         
         logger.info(f"✅ Vitality score calculated: {vitality_data['vitality_score']}/100 ({vitality_data['grade']})")
         
-        # Build HTML report
+        # Build complete report
         builder = ReportBuilder(submission_data, vitality_data)
         html_report = builder.build_html_report()
+        analysis_text = builder.generate_analysis_text()
+        shopping_list = builder.generate_shopping_list()
+        top_three_fixes = builder.generate_top_three_fixes()
         
         logger.info(f"✅ HTML report generated ({len(html_report)} bytes)")
+        logger.info(f"✅ Analysis text generated ({len(analysis_text)} chars)")
+        logger.info(f"✅ Shopping list generated ({len(shopping_list)} items)")
+        logger.info(f"✅ Top 3 fixes identified")
         
         return {
             'html': html_report,
             'vitality_data': vitality_data,
+            'analysis': analysis_text,
+            'shopping_list': shopping_list,
+            'top_three_fixes': top_three_fixes,
             'success': True
         }
     
@@ -429,6 +634,9 @@ def generate_report(submission_data: Dict) -> Dict:
         return {
             'html': None,
             'vitality_data': None,
+            'analysis': '',
+            'shopping_list': [],
+            'top_three_fixes': [],
             'success': False,
             'error': str(e)
         }

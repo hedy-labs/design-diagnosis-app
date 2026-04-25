@@ -717,11 +717,30 @@ async def generate_and_send_report(submission_id: int, report_type: str):
         with open(html_path, 'w') as f:
             f.write(result['html'])
         
-        # Generate PDF report (DISABLED — HTML-only transition)
-        # PDF generation has been disabled to streamline email delivery.
-        # All reports are now delivered as HTML with inline content.
-        pdf_path = None
-        logger.info(f"📄 PDF generation disabled (HTML-only mode)")
+        # Generate PDF report (restored for premium reports)
+        pdf_filename = f"report_{submission_id}_{uuid.uuid4().hex[:8]}.pdf"
+        pdf_path = os.path.join(report_dir, pdf_filename)
+        
+        try:
+            pdf_success = generate_pdf_report(
+                output_path=pdf_path,
+                property_name=submission.property_name,
+                vitality_data=score_data,
+                recommendations=recommendations,
+                analysis_text=result.get("analysis", ""),
+                shopping_list=result.get("shopping_list", []),
+                top_three_fixes=result.get("top_three_fixes", []),
+                report_type=report_type
+            )
+            
+            if not pdf_success:
+                logger.warning(f"⚠️  PDF generation failed, using email-only fallback")
+                pdf_path = None
+            else:
+                logger.info(f"✅ PDF report generated: {pdf_filename}")
+        except Exception as e:
+            logger.error(f"❌ PDF generation error: {e}")
+            pdf_path = None
         
         # Store report record
         report = db.create_report(

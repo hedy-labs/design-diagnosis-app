@@ -315,8 +315,10 @@ class EmailService:
     ):
         """Send email via SendGrid"""
         try:
+            # Use From() to include display name
+            from sendgrid.helpers.mail import From
             message = Mail(
-                from_email=self.from_email,
+                from_email=From(self.from_email, "Rooms by Rachel"),
                 to_emails=to_email,
                 subject=subject,
                 html_content=html_content
