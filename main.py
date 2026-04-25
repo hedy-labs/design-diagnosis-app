@@ -717,22 +717,11 @@ async def generate_and_send_report(submission_id: int, report_type: str):
         with open(html_path, 'w') as f:
             f.write(result['html'])
         
-        # Generate PDF report (if fpdf2 available, otherwise HTML fallback)
-        pdf_filename = html_filename.replace('.html', '.pdf')
-        pdf_path = os.path.join(report_dir, pdf_filename)
-        
-        pdf_success = generate_pdf_report(
-            output_path=pdf_path,
-            property_name=submission.property_name,
-            vitality_data=score_data,
-            recommendations=recommendations
-        )
-        
-        if not pdf_success:
-            # Fallback to HTML
-            from pdf_generator import generate_html_as_pdf_fallback
-            generate_html_as_pdf_fallback(pdf_path, result['html'])
-            logger.info(f"📄 Using HTML fallback for report")
+        # Generate PDF report (DISABLED — HTML-only transition)
+        # PDF generation has been disabled to streamline email delivery.
+        # All reports are now delivered as HTML with inline content.
+        pdf_path = None
+        logger.info(f"📄 PDF generation disabled (HTML-only mode)")
         
         # Store report record
         report = db.create_report(
@@ -754,7 +743,8 @@ async def generate_and_send_report(submission_id: int, report_type: str):
                     pdf_path=pdf_path,
                     vitality_score=score_data['vitality_score'],
                     grade=score_data['grade'],
-                    report_type=report_type
+                    report_type=report_type,
+                    analysis_text=result.get("analysis", "")
                 )
                 logger.info(f"✅ Report email sent to {submission.email}")
             except Exception as e:

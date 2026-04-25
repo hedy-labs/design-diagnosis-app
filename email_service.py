@@ -25,8 +25,13 @@ class EmailService:
     
     def __init__(self):
         self.api_key = os.getenv("SENDGRID_API_KEY")
-        # Use a more trusted sender email (Rachel's domain if available)
-        self.from_email = os.getenv("SENDGRID_FROM_EMAIL", "support@roomsbyrachel.com")
+        # Use Rachel's trusted sender email
+        self.from_email = os.getenv("SENDGRID_FROM_EMAIL", "rachellabelles@gmail.com")
+        # Brand links
+        self.website_url = "https://roomsbyrachel.ca"
+        self.instagram_url = "https://www.instagram.com/roomsbyrachel.ca"
+        self.tiktok_url = "https://www.tiktok.com/@rooms.by.rachel"
+        self.support_email = "rachellabelles@gmail.com"
         
         if self.api_key and SENDGRID_AVAILABLE:
             try:
@@ -128,12 +133,12 @@ class EmailService:
                         <p>Design Diagnosis — Expert Analysis for Short-Term Rentals</p>
                         
                         <div class="social-links">
-                            <a href="https://tiktok.com/@rooms.by.rachel">TikTok</a> • 
-                            <a href="https://instagram.com/@rooms.by.rachel">Instagram</a> • 
-                            <a href="https://roomsbyrachel.com">Website</a>
+                            <a href="{self.tiktok_url}">TikTok</a> • 
+                            <a href="{self.instagram_url}">Instagram</a> • 
+                            <a href="{self.website_url}">Website</a>
                         </div>
                         
-                        <p style="margin-top: 15px;">Questions? <a href="mailto:support@designdiagnosisapp.com">Contact us</a></p>
+                        <p style="margin-top: 15px;">Questions? <a href="mailto:{self.support_email}">Contact Support</a></p>
                         <p>© 2026 Rooms by Rachel. All rights reserved.</p>
                     </div>
                 </div>
@@ -269,14 +274,14 @@ class EmailService:
                         <p>Design Diagnosis — Expert Analysis for Short-Term Rentals</p>
                         
                         <div class="social-links">
-                            <a href="https://tiktok.com/@rooms.by.rachel">TikTok</a> • 
-                            <a href="https://instagram.com/rooms.by.rachel">Instagram</a> • 
-                            <a href="https://roomsbyrachel.com">Website</a>
+                            <a href="{self.tiktok_url}">TikTok</a> • 
+                            <a href="{self.instagram_url}">Instagram</a> • 
+                            <a href="{self.website_url}">Website</a>
                         </div>
                         
                         <div class="divider"></div>
                         
-                        <p>Questions? <a href="mailto:support@designdiagnosisapp.com">Contact us</a></p>
+                        <p>Questions? <a href="mailto:{self.support_email}">Contact Support</a></p>
                         <p>© 2026 Rooms by Rachel. All rights reserved.</p>
                     </div>
                 </div>
