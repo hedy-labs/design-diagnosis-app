@@ -763,7 +763,9 @@ async def generate_and_send_report(submission_id: int, report_type: str):
                     vitality_score=score_data['vitality_score'],
                     grade=score_data['grade'],
                     report_type=report_type,
-                    analysis_text=result.get("analysis", "")
+                    analysis_text=result.get("analysis", ""),
+                    shopping_list=result.get("shopping_list", []),
+                    top_three_fixes=result.get("top_three_fixes", [])
                 )
                 logger.info(f"✅ Report email sent to {submission.email}")
             except Exception as e:

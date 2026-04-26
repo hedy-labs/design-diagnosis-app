@@ -511,73 +511,66 @@ class ReportBuilder:
             shopping_list.append({
                 'category': 'Bedroom',
                 'tier': 'Value',
-                'item': 'Bedside Tables (Set of 2)',
-                'price_low': 60,
-                'price_high': 120,
-                'url': f"{amazon_base}nightstands+white{affiliate_tag}",
-                'why': 'Critical comfort signal. Guests expect a table next to the bed for phone, water, lamp.'
+                'name': 'Bedside Tables (Set of 2)',
+                'price': '$60–$120',
+                'link': f"{amazon_base}nightstands+white{affiliate_tag}",
+                'description': 'Critical comfort signal. Guests expect a table next to the bed for phone, water, lamp.'
             })
             shopping_list.append({
                 'category': 'Bedroom',
                 'tier': 'Value',
-                'item': 'Bedside Lamps (Set of 2)',
-                'price_low': 40,
-                'price_high': 100,
-                'url': f"{amazon_base}bedside+lamps+modern{affiliate_tag}",
-                'why': 'Functional + psychological comfort. Guests need independent light control.'
+                'name': 'Bedside Lamps (Set of 2)',
+                'price': '$40–$100',
+                'link': f"{amazon_base}bedside+lamps+modern{affiliate_tag}",
+                'description': 'Functional + psychological comfort. Guests need independent light control.'
             })
         
         if 'plunger' in missing:
             shopping_list.append({
                 'category': 'Bathroom',
                 'tier': 'Value',
-                'item': 'Plunger + Brush Holder',
-                'price_low': 15,
-                'price_high': 40,
-                'url': f"{amazon_base}toilet+plunger+modern{affiliate_tag}",
-                'why': 'Non-negotiable. Guests will be very uncomfortable without this.'
+                'name': 'Plunger + Brush Holder',
+                'price': '$15–$40',
+                'link': f"{amazon_base}toilet+plunger+modern{affiliate_tag}",
+                'description': 'Non-negotiable. Guests will be very uncomfortable without this.'
             })
         
         if 'entry_hooks' in missing or 'shoe_rack' in missing:
             shopping_list.append({
                 'category': 'Entry',
                 'tier': 'Value',
-                'item': 'Entry Coat Hooks (3-4 piece)',
-                'price_low': 20,
-                'price_high': 60,
-                'url': f"{amazon_base}wall+hooks+modern{affiliate_tag}",
-                'why': 'First-impression friction killer. Guests need obvious place for jackets/bags.'
+                'name': 'Entry Coat Hooks (3-4 piece)',
+                'price': '$20–$60',
+                'link': f"{amazon_base}wall+hooks+modern{affiliate_tag}",
+                'description': 'First-impression friction killer. Guests need obvious place for jackets/bags.'
             })
             shopping_list.append({
                 'category': 'Entry',
                 'tier': 'Value',
-                'item': 'Slim Shoe Rack',
-                'price_low': 30,
-                'price_high': 80,
-                'url': f"{amazon_base}shoe+rack+entryway{affiliate_tag}",
-                'why': 'Functional necessity. Shows you expect guests to stay, not visit.'
+                'name': 'Slim Shoe Rack',
+                'price': '$30–$80',
+                'link': f"{amazon_base}shoe+rack+entryway{affiliate_tag}",
+                'description': 'Functional necessity. Shows you expect guests to stay, not visit.'
             })
         
         if 'sofa_side_tables' in missing:
             shopping_list.append({
                 'category': 'Living Room',
                 'tier': 'Signature',
-                'item': 'Sofa Side Table (C-shape)',
-                'price_low': 80,
-                'price_high': 200,
-                'url': f"{amazon_base}c+table+sofa+side{affiliate_tag}",
-                'why': 'Functional anchor. Guests need place for drinks, remotes, phones while sitting.'
+                'name': 'Sofa Side Table (C-shape)',
+                'price': '$80–$200',
+                'link': f"{amazon_base}c+table+sofa+side{affiliate_tag}",
+                'description': 'Functional anchor. Guests need place for drinks, remotes, phones while sitting.'
             })
         
         if 'bathroom_caddy' in missing:
             shopping_list.append({
                 'category': 'Bathroom',
                 'tier': 'Value',
-                'item': 'Shower Caddy / Stool',
-                'price_low': 20,
-                'price_high': 50,
-                'url': f"{amazon_base}shower+caddy+teak{affiliate_tag}",
-                'why': 'Shower utility essential. Guests need shelf for toiletries.'
+                'name': 'Shower Caddy / Stool',
+                'price': '$20–$50',
+                'link': f"{amazon_base}shower+caddy+teak{affiliate_tag}",
+                'description': 'Shower utility essential. Guests need shelf for toiletries.'
             })
         
         return shopping_list

@@ -169,9 +169,12 @@ class EmailService:
         pdf_path: str,
         vitality_score: float,
         grade: str,
-        report_type: str
+        report_type: str,
+        analysis_text: str = "",
+        shopping_list: list = None,
+        top_three_fixes: list = None
     ):
-        """Send report email with PDF attachment"""
+        """Send report email with PDF attachment and content"""
         try:
             # VALIDATE REPORT TYPE STRICTLY
             if not report_type or report_type not in ["free", "premium"]:
@@ -190,6 +193,40 @@ class EmailService:
             
             logger.info(f"📎 PDF attachment: {pdf_path}")
             
+            # Build HTML email with dynamic content
+            if shopping_list is None:
+                shopping_list = []
+            if top_three_fixes is None:
+                top_three_fixes = []
+            
+            # Build shopping list HTML
+            shopping_html = ""
+            if shopping_list and report_type == "premium":
+                shopping_html = "<div class='content'><h2>Shopping List</h2><ul>"
+                for item in shopping_list[:10]:  # Limit to 10 in email
+                    name = item.get('name', 'Item')
+                    price = item.get('price', 'N/A')
+                    link = item.get('link', '#')
+                    desc = item.get('description', '')
+                    shopping_html += f"<li><strong><a href='{link}'>{name}</a></strong> ({price})<br/><em>{desc}</em></li>"
+                shopping_html += "</ul></div>"
+            
+            # Build analysis HTML
+            analysis_html = ""
+            if analysis_text:
+                analysis_html = f"<div class='content'><h2>The Situation</h2><p>{analysis_text}</p></div>"
+            
+            # Build top 3 fixes HTML
+            fixes_html = ""
+            if top_three_fixes:
+                fixes_html = "<div class='content'><h2>Top 3 High-Impact Fixes</h2><ul>"
+                for i, fix in enumerate(top_three_fixes[:3], 1):
+                    title = fix.get('title', 'Fix')
+                    desc = fix.get('description', '')
+                    cost = fix.get('cost_low', 0)
+                    fixes_html += f"<li><strong>#{i}: {title}</strong><br/>{desc}<br/><em>Est. Cost: ${cost}+</em></li>"
+                fixes_html += "</ul></div>"
+            
             subject = f"Your Design Diagnosis Report — {property_name} ({grade})"
             html_content = f"""
             <html>
@@ -207,6 +244,8 @@ class EmailService:
                     .content h2 {{ color: #667eea; margin-top: 0; font-size: 20px; }}
                     .content ul {{ margin: 15px 0; padding-left: 20px; }}
                     .content li {{ margin: 10px 0; color: #555; }}
+                    .content a {{ color: #667eea; text-decoration: none; font-weight: 500; }}
+                    .content a:hover {{ text-decoration: underline; }}
                     .cta-button {{
                         display: inline-block;
                         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -218,10 +257,6 @@ class EmailService:
                         margin: 20px 0;
                         font-size: 16px;
                     }}
-                    .next-steps {{ background: #e8f5e9; border-left: 4px solid #4caf50; padding: 20px; margin: 20px 0; border-radius: 6px; }}
-                    .next-steps strong {{ color: #2e7d32; display: block; margin-bottom: 10px; }}
-                    .next-steps ol {{ margin: 10px 0; padding-left: 20px; color: #555; }}
-                    .next-steps li {{ margin: 8px 0; }}
                     .footer {{ color: #999; font-size: 13px; text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; }}
                     .footer p {{ margin: 8px 0; }}
                     .footer a {{ color: #667eea; text-decoration: none; }}
@@ -234,39 +269,33 @@ class EmailService:
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1>✨ Your Design Diagnosis Report</h1>
-                        <p>Complete Analysis for: <strong>{property_name}</strong></p>
+                        <h1>Your Design Diagnosis Report</h1>
+                        <p>{property_name}</p>
                     </div>
                     
                     <div class="score-card">
-                        <div>Your Vitality Score</div>
+                        <div>Vitality Score</div>
                         <div class="score">{vitality_score}/100</div>
-                        <div class="grade">Grade: {grade}</div>
+                        <div class="grade">Grade {grade}</div>
                     </div>
                     
+                    {analysis_html}
+                    {fixes_html}
+                    {shopping_html}
+                    
                     <div class="content">
-                        <h2>📊 What's Inside Your Report</h2>
-                        <ul>
-                            <li><strong>Vitality Score Breakdown</strong> — Guest Comfort, Photo Quality, Design Assessment</li>
-                            <li><strong>Priority Recommendations</strong> — Ranked by impact and implementation cost</li>
-                            <li><strong>Expert Design Insights</strong> — Grounded in professional interior design principles</li>
-                            <li><strong>Action Plan</strong> — Clear next steps to improve your listing</li>
-                        </ul>
-                        
-                        <center>
-                            <a href="https://designdiagnosisapp.com" class="cta-button">View Full Dashboard</a>
-                        </center>
-                        
-                        <div class="next-steps">
-                            <strong>🚀 Here's What to Do Next:</strong>
-                            <ol>
-                                <li>Download and review your attached PDF report</li>
-                                <li>Prioritize fixes based on your budget and timeline</li>
-                                <li>Start implementing high-impact recommendations</li>
-                                <li>Track your progress and re-submit in 30 days</li>
-                            </ol>
-                            <p style="margin-top: 15px; color: #2e7d32;"><strong>Need help?</strong> Reply to this email to schedule a consultation with Rachel ($99 for 15 min).</p>
-                        </div>
+                        <strong>Next Steps:</strong>
+                        <ol style="padding-left: 20px;">
+                            <li>Review your attached PDF report (8-9 pages of detailed analysis)</li>
+                            <li>Prioritize fixes based on your budget and timeline</li>
+                            <li>Use the shopping list to source items</li>
+                            <li>Track progress and re-submit in 30 days for a re-score</li>
+                        </ol>
+                        <p style="margin-top: 15px; text-align: center;">
+                            <strong>Ready for expert guidance?</strong><br/>
+                            <a href="https://calendly.com/roomsbyrachel" class="cta-button">Book a Consultation</a>
+                        </p>
+                    </div>
                     </div>
                     
                     <div class="footer">
