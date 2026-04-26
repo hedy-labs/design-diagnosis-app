@@ -160,14 +160,13 @@ class MockScoringEngine:
 scoring_engine = MockScoringEngine()
 logger.info("✅ Scoring engine initialized (mock mode)")
 
-# PDF Generator (Mock)
-# Import real PDF generator (not mock)
+# PDF Generator V2 (Weasyprint-based HTML-to-PDF)
 try:
-    from pdf_generator import generate_pdf_report, generate_html_as_pdf_fallback
+    from pdf_generator_v2 import generate_pdf_report_v2, generate_html_report
     pdf_available = True
-    logger.info("✅ PDF generator initialized (real mode with fpdf2)")
+    logger.info("✅ PDF generator V2 initialized (Weasyprint HTML-to-PDF)")
 except ImportError:
-    logger.warning("⚠️  fpdf2 not available, PDF generation will use HTML fallback")
+    logger.warning("⚠️  pdf_generator_v2 not available, using fallback")
     pdf_available = False
 
 # ============================================================================
@@ -722,7 +721,7 @@ async def generate_and_send_report(submission_id: int, report_type: str):
         pdf_path = os.path.join(report_dir, pdf_filename)
         
         try:
-            pdf_success = generate_pdf_report(
+            pdf_success = generate_pdf_report_v2(
                 output_path=pdf_path,
                 property_name=submission.property_name,
                 vitality_data=score_data,
