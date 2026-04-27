@@ -60,15 +60,28 @@ class VisionAnalyzerV2:
             
             # Batch analyze in parallel
             logger.info(f"🤖 Analyzing {len(sampled)} images with Vision AI...")
+            print(f"[VISION] 🤖 Starting batch analysis of {len(sampled)} images")
             tasks = [self._analyze_single_image(url) for url in sampled]
             results = await asyncio.gather(*tasks, return_exceptions=True)
             
-            # Filter out errors
+            # Filter out errors and print details
             valid_results = [r for r in results if isinstance(r, dict) and r.get('success')]
-            failed = len([r for r in results if isinstance(r, Exception) or not r.get('success')])
+            failed_results = [r for r in results if isinstance(r, Exception) or (isinstance(r, dict) and not r.get('success'))]
+            failed = len(failed_results)
             
             if failed > 0:
+                print(f"[VISION] ⚠️  {failed} images FAILED in batch analysis:")
+                for idx, result in enumerate(failed_results):
+                    if isinstance(result, Exception):
+                        print(f"[VISION]    Image {idx + 1}: Exception: {type(result).__name__}: {str(result)}")
+                    elif isinstance(result, dict):
+                        error_msg = result.get('error', 'Unknown error')
+                        error_type = result.get('error_type', 'Unknown')
+                        print(f"[VISION]    Image {idx + 1}: {error_type}: {error_msg}")
                 logger.warning(f"⚠️  {failed} images failed to analyze")
+                for result in failed_results:
+                    if isinstance(result, dict):
+                        logger.warning(f"      Error: {result.get('error')}")
             
             if not valid_results:
                 logger.warning("⚠️  No successful vision analyses, using default scores")
@@ -153,19 +166,23 @@ class VisionAnalyzerV2:
             client = anthropic.Anthropic(api_key=self.api_key)
             
             logger.info(f"   🔍 Analyzing: {image_url[:60]}...")
+            print(f"[VISION] 🔍 Starting single image analysis")
             
             # Determine if URL or base64-encoded data URI
             if image_url.startswith("data:"):
                 # Base64-encoded image data URI
                 logger.info(f"   📷 Processing base64-encoded image...")
+                print(f"[VISION] 📷 Parsing data URI (base64 image)")
                 image_source = self._parse_data_uri(image_url)
             else:
                 # HTTP URL
+                print(f"[VISION] 🌐 Using HTTP URL image source")
                 image_source = {
                     "type": "url",
                     "url": image_url
                 }
             
+            print(f"[VISION] 📤 Sending to Claude API: {self.model}")
             message = client.messages.create(
                 model=self.model,
                 max_tokens=300,
@@ -205,6 +222,8 @@ class VisionAnalyzerV2:
                 ]
             )
             
+            print(f"[VISION] ✅ API response received")
+            
             # Parse response
             response_text = message.content[0].text.strip()
             
@@ -218,11 +237,22 @@ class VisionAnalyzerV2:
             result['success'] = True
             
             logger.info(f"   ✅ Analyzed: {result['room_type']} (staging: {result['staging']}/6)")
+            print(f"[VISION] ✅ Analysis complete: {result['room_type']} (staging: {result['staging']}/6)")
             return result
         
         except Exception as e:
+            print(f"[VISION] ❌ CRITICAL ERROR IN _analyze_single_image:")
+            print(f"[VISION]    Exception type: {type(e).__name__}")
+            print(f"[VISION]    Error message: {str(e)}")
+            import traceback
+            print(f"[VISION]    Traceback:")
+            for line in traceback.format_exc().split('\n'):
+                if line:
+                    print(f"[VISION]      {line}")
             logger.error(f"   ❌ Analysis failed: {e}")
-            return {'success': False, 'error': str(e)}
+            logger.error(f"      Exception type: {type(e).__name__}")
+            logger.error(traceback.format_exc())
+            return {'success': False, 'error': str(e), 'error_type': type(e).__name__}
     
     def _parse_data_uri(self, data_uri: str) -> Dict:
         """

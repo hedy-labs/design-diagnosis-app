@@ -644,7 +644,7 @@
                 
                 <!-- Action Buttons -->
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px;">
-                    <button type="button" id="analyzePhotosBtn" onclick="analyzeUploadedPhotos()" style="background: #28a745; color: white; padding: 14px 30px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; flex: 1; min-width: 200px; display: none;">
+                    <button type="button" id="analyzePhotosBtn" onclick="handleAnalyzeUploadedPhotos()" style="background: #28a745; color: white; padding: 14px 30px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; flex: 1; min-width: 200px; display: none;">
                         🚀 Analyze Uploaded Photos
                     </button>
                     <button type="button" onclick="goBackToEditUrl()" style="background: #6c757d; color: white; padding: 14px 30px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px;">
@@ -764,6 +764,43 @@
             const prevBtn = document.getElementById('prevBtn');
             const nextBtn = document.getElementById('nextBtn');
             
+            // Get report type FIRST to check if Premium payment is needed
+            const report_type = document.querySelector('input[name="report_type"]:checked').value;
+            console.log(`Form submission - Report type: ${report_type}`);
+            
+            // If Premium and no manual upload vision results, require Stripe payment
+            if (report_type === 'premium' && !window._uploadedVisionResults) {
+                console.log('🔴 Premium tier, no prior payment - redirecting to Stripe');
+                const email = document.querySelector('input[name="email"]').value;
+                
+                if (!email) {
+                    showMessage('❌ Please enter your email before proceeding to payment.', 'error');
+                    return;
+                }
+                
+                try {
+                    const checkoutResponse = await fetch('/api/create-checkout-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: email })
+                    });
+                    
+                    if (!checkoutResponse.ok) {
+                        throw new Error(`Checkout failed: ${checkoutResponse.status}`);
+                    }
+                    
+                    const { session_id, url } = await checkoutResponse.json();
+                    console.log(`✅ Stripe session: ${session_id}`);
+                    window.location.href = url;
+                    return;
+                } catch (error) {
+                    console.error('❌ Stripe error:', error);
+                    showMessage(`❌ Payment system error: ${error.message}`, 'error');
+                    return;
+                }
+            }
+            
+            // Payment check passed, continue with form submission
             submitBtn.disabled = true;
             nextBtn.disabled = true;
             if (prevBtn) prevBtn.disabled = true;
@@ -773,7 +810,6 @@
                 const property_name = document.querySelector('input[name="property_name"]').value;
                 const email = document.querySelector('input[name="email"]').value;
                 const airbnb_url = document.querySelector('input[name="airbnb_url"]').value || null;
-                const report_type = document.querySelector('input[name="report_type"]:checked').value;
                 
                 // Show loading spinner and disable button
                 showMessage('⏳ Analyzing property photos. This AI evaluation may take 10-15 seconds...', 'loading');
@@ -989,8 +1025,59 @@
             }
         }
         
+        async function handleAnalyzeUploadedPhotos() {
+            console.log('handleAnalyzeUploadedPhotos() called - checking payment tier...');
+            
+            // Get selected report type
+            const reportType = document.querySelector('input[name="report_type"]:checked')?.value || 'free';
+            console.log(`Report type selected: ${reportType}`);
+            
+            // If Premium, redirect to Stripe checkout FIRST
+            if (reportType === 'premium') {
+                console.log('🔴 Premium tier detected - must complete payment before photo analysis');
+                
+                // Get email from form (if available)
+                const emailInput = document.querySelector('input[name="email"]');
+                const email = emailInput?.value;
+                
+                if (!email) {
+                    showMessage('❌ Please enter your email on Step 3 before proceeding to payment.', 'error');
+                    showStep(3);
+                    return;
+                }
+                
+                console.log('Redirecting to Stripe checkout session...');
+                try {
+                    const checkoutResponse = await fetch('/api/create-checkout-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: email })
+                    });
+                    
+                    if (!checkoutResponse.ok) {
+                        throw new Error(`Checkout session failed: ${checkoutResponse.status}`);
+                    }
+                    
+                    const { session_id, url } = await checkoutResponse.json();
+                    console.log(`✅ Stripe session created: ${session_id}`);
+                    
+                    // Redirect to Stripe
+                    window.location.href = url;
+                    return;
+                } catch (error) {
+                    console.error('❌ Stripe redirect failed:', error);
+                    showMessage(`❌ Payment system error: ${error.message}`, 'error');
+                    return;
+                }
+            }
+            
+            // If Free tier, proceed directly to analysis
+            console.log('✅ Free tier - proceeding to photo analysis');
+            await analyzeUploadedPhotos();
+        }
+        
         async function analyzeUploadedPhotos() {
-            console.log('analyzeUploadedPhotos() called');
+            console.log('analyzeUploadedPhotos() called - analyzing images');
             
             if (uploadedFiles.length === 0) {
                 alert('Please select at least 1 photo before analyzing.');
