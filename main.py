@@ -239,6 +239,56 @@ async def health_check():
     )
 
 
+# ============================================================================
+# TEST PILOT SUPPORT (For Automated QA)
+# ============================================================================
+
+@app.post("/test/mark-payment-complete")
+async def test_mark_payment_complete(submission_id: int, test_key: str = ""):
+    """
+    TEST ONLY: Mark a submission as paid (bypasses Stripe redirect for testing).
+    
+    Requires: test_key=PILOT_TEST_KEY (set in environment or hardcoded below)
+    This endpoint ONLY works in development mode and will be removed in production.
+    """
+    PILOT_TEST_KEY = os.getenv("PILOT_TEST_KEY", "pilot-test-key-insecure-dev-only")
+    
+    if test_key != PILOT_TEST_KEY:
+        logger.warning(f"❌ Test endpoint called with invalid key")
+        raise HTTPException(status_code=401, detail="Invalid test key")
+    
+    if not db:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    
+    try:
+        # Get submission
+        submission = db.get_form_submission(submission_id)
+        if not submission:
+            raise HTTPException(status_code=404, detail=f"Submission {submission_id} not found")
+        
+        # Create fake payment record (for testing premium flow)
+        payment = db.create_payment(
+            submission_id=submission_id,
+            stripe_intent_id=f"test_session_{uuid.uuid4().hex[:8]}",
+            amount=3900,
+            status="completed"
+        )
+        
+        logger.info(f"🧪 TEST: Marked submission {submission_id} as paid (payment {payment.id})")
+        print(f"[TEST] ✅ Submission {submission_id} marked as PAID (fake payment {payment.id})")
+        
+        return {
+            "success": True,
+            "submission_id": submission_id,
+            "message": "TEST: Submission marked as paid",
+            "payment_id": payment.id
+        }
+    
+    except Exception as e:
+        logger.error(f"❌ Test endpoint error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/analyze-uploaded-photos")
 async def analyze_uploaded_photos(request: Request):
     """
