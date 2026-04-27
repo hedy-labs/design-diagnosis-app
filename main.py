@@ -310,7 +310,7 @@ async def submit_form(form_data: FormSubmitInput, background_tasks: BackgroundTa
         
         logger.info(f"🔍 User status: {'Returning Verified ✅' if is_returning_verified else 'New/Unverified'}")
         
-        # Save form submission
+        # Save form submission (with optional vision_results if provided)
         submission = db.create_form_submission(
             email=form_data.email,
             property_name=form_data.property_name,
@@ -323,6 +323,15 @@ async def submit_form(form_data: FormSubmitInput, background_tasks: BackgroundTa
             guest_comfort_checklist=form_data.guest_comfort_checklist,
             report_type=form_data.report_type
         )
+        
+        # Store vision_results temporarily (for background task access)
+        # In production, this should be stored in database; for now, use in-memory cache
+        if hasattr(form_data, 'vision_results') and form_data.vision_results:
+            # Store in app state for background task to access
+            if not hasattr(app, '_vision_cache'):
+                app._vision_cache = {}
+            app._vision_cache[submission.id] = form_data.vision_results
+            logger.info(f"💾 Vision results cached for submission {submission.id}")
         
         logger.info(f"✅ Submission saved with ID: {submission.id}")
         
@@ -748,6 +757,14 @@ async def generate_and_send_report(submission_id: int, report_type: str):
             logger.error(f"❌ Submission {submission_id} not found")
             return
         
+        # Retrieve cached vision_results if available
+        vision_results = None
+        if hasattr(app, '_vision_cache') and submission_id in app._vision_cache:
+            vision_results = app._vision_cache[submission_id]
+            logger.info(f"💾 Retrieved cached vision results for submission {submission_id}")
+            # Clean up cache
+            del app._vision_cache[submission_id]
+        
         # Generate vitality score using real report generator
         from report_generator import generate_report, ReportBuilder
         
@@ -760,6 +777,7 @@ async def generate_and_send_report(submission_id: int, report_type: str):
             'listing_type': submission.listing_type,
             'guest_comfort_checklist': submission.guest_comfort_checklist,
             'total_photos': sanitize_integer(submission.total_photos, default=20),
+            'vision_results': vision_results  # Pass vision results to report generator
         }
         
         result = generate_report(submission_dict)
