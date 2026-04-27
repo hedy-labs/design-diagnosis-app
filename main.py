@@ -36,10 +36,44 @@ BASE_URL = "http://147.182.247.168:8000"  # Default VPS IP
 DEFAULT_BASE_URL = os.getenv("BASE_URL", BASE_URL)
 DB_PATH = os.getenv("DB_PATH", "design_diagnosis.db")
 REPORT_OUTPUT_DIR = os.getenv("REPORT_OUTPUT_DIR", "./reports")
+UPLOADED_PHOTOS_DIR = os.getenv("UPLOADED_PHOTOS_DIR", "./uploaded_photos")
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
 AMAZON_AFFILIATE_ID = os.getenv("AMAZON_AFFILIATE_ID", "")
+
+# Ensure directories exist
+os.makedirs(REPORT_OUTPUT_DIR, exist_ok=True)
+os.makedirs(UPLOADED_PHOTOS_DIR, exist_ok=True)
+
+
+def get_uploaded_photos_for_submission(submission_id: int) -> List[str]:
+    """
+    Retrieve local file paths for photos uploaded by a user.
+    
+    Photos are stored in: ./uploaded_photos/submission_{id}/
+    Returns: List of local file paths (can be loaded into base64 for Vision AI)
+    """
+    try:
+        submission_dir = os.path.join(UPLOADED_PHOTOS_DIR, f"submission_{submission_id}")
+        if not os.path.exists(submission_dir):
+            logger.info(f"ℹ️  No uploaded photos directory for submission {submission_id}")
+            return []
+        
+        # Get all image files (.jpg, .png, .webp, etc.)
+        image_extensions = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp'}
+        photo_files = []
+        
+        for filename in sorted(os.listdir(submission_dir)):
+            file_path = os.path.join(submission_dir, filename)
+            if os.path.isfile(file_path) and os.path.splitext(filename)[1].lower() in image_extensions:
+                photo_files.append(file_path)
+        
+        logger.info(f"ℹ️  Found {len(photo_files)} uploaded photos for submission {submission_id}")
+        return photo_files
+    except Exception as e:
+        logger.error(f"❌ Error retrieving uploaded photos: {e}")
+        return []
 
 
 def get_base_url(request: Optional[Request] = None) -> str:
@@ -211,7 +245,10 @@ async def analyze_uploaded_photos(request: Request):
     Analyze user-uploaded photos: Real Claude Vision AI analysis
     
     Input: multipart/form-data with 'photos' files
-    Output: { "success": bool, "vision_results": {...} }
+    Output: { "success": bool, "vision_results": {...}, "temp_photo_paths": [...] }
+    
+    Note: Photos are saved to temporary 'temp_uploads' directory.
+    When form is submitted, they'll be moved to submission_{id}/ directory.
     """
     try:
         form = await request.form()
@@ -228,8 +265,14 @@ async def analyze_uploaded_photos(request: Request):
         from vision_to_vitality import map_vision_to_design_score, get_design_narrative
         import base64
         
-        # Convert uploaded files to base64 data URIs
+        # Save files to temporary directory for later retrieval
+        temp_upload_dir = os.path.join(UPLOADED_PHOTOS_DIR, "temp_uploads")
+        os.makedirs(temp_upload_dir, exist_ok=True)
+        
+        # Convert uploaded files to base64 data URIs AND save to disk
         image_data_uris = []
+        temp_photo_paths = []
+        
         for idx, file in enumerate(uploaded_files):
             try:
                 content = await file.read()
@@ -240,11 +283,20 @@ async def analyze_uploaded_photos(request: Request):
                 data_uri = f"data:{mime_type};base64,{b64}"
                 image_data_uris.append(data_uri)
                 
+                # Save to temporary directory with UUID to avoid collisions
+                file_ext = os.path.splitext(file.filename)[1] or '.jpg'
+                temp_filename = f"{uuid.uuid4().hex}{file_ext}"
+                temp_path = os.path.join(temp_upload_dir, temp_filename)
+                with open(temp_path, 'wb') as f:
+                    f.write(content)
+                temp_photo_paths.append(temp_path)
+                
                 print(f"[UPLOAD] ✅ File {idx + 1}: {file.filename} ({len(content)} bytes, {mime_type})")
-                logger.info(f"   ✅ File {idx + 1}: {file.filename} ({len(content)} bytes)")
+                print(f"[UPLOAD]    Saved to: {temp_path}")
+                logger.info(f"   ✅ File {idx + 1}: {file.filename} ({len(content)} bytes) → {temp_filename}")
             except Exception as e:
-                print(f"[UPLOAD] ❌ File {idx + 1} read failed: {e}")
-                logger.warning(f"⚠️  Failed to read file {file.filename}: {e}")
+                print(f"[UPLOAD] ❌ File {idx + 1} read/save failed: {e}")
+                logger.warning(f"⚠️  Failed to process file {file.filename}: {e}")
                 continue
         
         if not image_data_uris:
@@ -278,6 +330,7 @@ async def analyze_uploaded_photos(request: Request):
         
         logger.info(f"✅ Design mapping complete: design_score={design_mapping['design_score']}/30")
         print(f"[UPLOAD] ✅ Design mapping: score={design_mapping['design_score']}/30")
+        print(f"[UPLOAD] 💾 Saved {len(temp_photo_paths)} photos to temporary storage")
         
         return {
             "success": True,
@@ -290,7 +343,8 @@ async def analyze_uploaded_photos(request: Request):
                 "design_score": design_mapping['design_score'],
                 "design_narrative": design_narrative,
                 "room_summaries": vision_results.get('room_summaries', {})
-            }
+            },
+            "temp_photo_paths": temp_photo_paths  # Return for later retrieval
         }
     
     except Exception as e:
@@ -428,6 +482,25 @@ async def submit_form(form_data: FormSubmitInput, background_tasks: BackgroundTa
                 app._vision_cache = {}
             app._vision_cache[submission.id] = form_data.vision_results
             logger.info(f"💾 Vision results cached for submission {submission.id}")
+        
+        # Move any uploaded photos from temp directory to submission-specific directory
+        temp_upload_dir = os.path.join(UPLOADED_PHOTOS_DIR, "temp_uploads")
+        if os.path.exists(temp_upload_dir):
+            submission_photo_dir = os.path.join(UPLOADED_PHOTOS_DIR, f"submission_{submission.id}")
+            os.makedirs(submission_photo_dir, exist_ok=True)
+            
+            try:
+                temp_files = [f for f in os.listdir(temp_upload_dir) if os.path.isfile(os.path.join(temp_upload_dir, f))]
+                if temp_files:
+                    for filename in temp_files:
+                        src_path = os.path.join(temp_upload_dir, filename)
+                        dst_path = os.path.join(submission_photo_dir, filename)
+                        import shutil
+                        shutil.move(src_path, dst_path)
+                        logger.info(f"📁 Moved photo: {filename} → submission_{submission.id}/")
+                    print(f"[FORM] 📁 Moved {len(temp_files)} photos to submission_{submission.id}/")
+            except Exception as move_err:
+                logger.warning(f"⚠️  Failed to move photos: {move_err}")
         
         logger.info(f"✅ Submission saved with ID: {submission.id}")
         
@@ -937,14 +1010,46 @@ async def generate_and_send_report(submission_id: int, report_type: str):
             
             # STRATEGY 2: Check for manually uploaded photos (fallback)
             if not image_urls and scraper_attempted:
-                print(f"[REPORT]    📁 Strategy 2: Checking for uploaded photos (fallback)...")
-                print(f"[REPORT] 💡 Future: Load from uploaded_photos table if available")
-                logger.info(f"ℹ️  Scraper failed but uploaded photos storage not yet implemented")
-                print(f"[REPORT]    ⏳ Uploaded photo fallback: TBD in Phase 2")
-                image_urls = []
+                print(f"[REPORT]    📁 Strategy 2: Checking for uploaded photos...")
+                uploaded_photo_paths = get_uploaded_photos_for_submission(submission_id)
+                
+                if uploaded_photo_paths:
+                    print(f"[REPORT]    ✅ Found {len(uploaded_photo_paths)} uploaded photos")
+                    # Convert file paths to data URIs for Vision AI
+                    for path in uploaded_photo_paths:
+                        try:
+                            with open(path, 'rb') as f:
+                                content = f.read()
+                            import base64
+                            b64 = base64.b64encode(content).decode('utf-8')
+                            
+                            # Detect MIME type from extension
+                            ext = os.path.splitext(path)[1].lower()
+                            mime_map = {'.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif'}
+                            mime_type = mime_map.get(ext, 'image/jpeg')
+                            
+                            data_uri = f"data:{mime_type};base64,{b64}"
+                            image_urls.append(data_uri)
+                            print(f"[REPORT]       ✓ Loaded: {os.path.basename(path)}")
+                        except Exception as load_err:
+                            print(f"[REPORT]       ❌ Failed to load {os.path.basename(path)}: {load_err}")
+                            logger.warning(f"Failed to load uploaded photo {path}: {load_err}")
+                    
+                    if image_urls:
+                        print(f"[REPORT]    ✅ Converted {len(image_urls)} uploaded photos to data URIs")
+                        logger.info(f"✅ Loaded {len(image_urls)} uploaded photos from disk")
+                else:
+                    print(f"[REPORT]    ⏭️  No uploaded photos found for submission {submission_id}")
+                    logger.info(f"ℹ️  No uploaded photos available for fallback")
             elif not submission.airbnb_url:
-                print(f"[REPORT]    📁 No Airbnb URL - would check for uploaded files")
-                logger.warning(f"⚠️  No Airbnb URL provided - uploaded photo loading needed")
+                print(f"[REPORT]    📁 No Airbnb URL - checking for uploaded files...")
+                uploaded_photo_paths = get_uploaded_photos_for_submission(submission_id)
+                if uploaded_photo_paths:
+                    print(f"[REPORT]    ✅ Found {len(uploaded_photo_paths)} uploaded photos")
+                    logger.info(f"✅ Using {len(uploaded_photo_paths)} uploaded photos (no URL)")
+                else:
+                    print(f"[REPORT]    ❌ No uploaded photos found")
+                    logger.warning(f"⚠️  No Airbnb URL and no uploaded photos available")
             
             if image_urls:
                 print(f"[REPORT] 🤖 STEP 1B: Running Vision AI on {len(image_urls)} images...")

@@ -81,7 +81,6 @@ async def extract_airbnb_photos(listing_url: str) -> List[str]:
                     "--single-process",
                 ]
             )
-            print(f"[SCRAPER] ✅ Chromium launched with {len(browser._args)} optimization flags")
             
             context = await browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
