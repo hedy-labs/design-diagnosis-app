@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 # Try to import SendGrid
 try:
     from sendgrid import SendGridAPIClient
-    from sendgrid.helpers.mail import Mail, Email, To, Content
+    from sendgrid.helpers.mail import Mail, Email, To, Content, Attachment, FileContent, FileName, FileType, Disposition, From
     SENDGRID_AVAILABLE = True
 except ImportError:
     logger.warning("⚠️  sendgrid package not installed. Email will use mock mode.")
@@ -348,7 +348,6 @@ class EmailService:
         """Send email via SendGrid"""
         try:
             # Use From() to include display name
-            from sendgrid.helpers.mail import From
             message = Mail(
                 from_email=From(self.from_email, "Rooms by Rachel"),
                 to_emails=to_email,
@@ -356,15 +355,23 @@ class EmailService:
                 html_content=html_content
             )
             
-            # Add attachment if provided
+            # Add PDF attachment if provided
             if attachment_path and os.path.exists(attachment_path):
+                import base64
                 with open(attachment_path, 'rb') as f:
                     attachment_data = f.read()
-                    message.attachment = message.Attachment(
-                        file_content=attachment_data,
-                        file_name=os.path.basename(attachment_path),
-                        file_type="application/pdf"
+                    # Base64 encode the PDF file
+                    file_content_b64 = base64.b64encode(attachment_data).decode('utf-8')
+                    
+                    # Create attachment using proper SendGrid classes
+                    attachment = Attachment(
+                        file_content=FileContent(file_content_b64),
+                        file_name=FileName(os.path.basename(attachment_path)),
+                        file_type=FileType("application/pdf"),
+                        disposition=Disposition("attachment")
                     )
+                    message.attachment = attachment
+                    logger.info(f"📎 PDF attachment added: {os.path.basename(attachment_path)}")
             
             # Send
             response = self.client.send(message)
@@ -372,6 +379,7 @@ class EmailService:
         
         except Exception as e:
             logger.error(f"❌ SendGrid send error: {e}")
+            raise
     
     def _send_mock(self, to_email: str, subject: str, message_type: str):
         """Mock email (log only)"""
