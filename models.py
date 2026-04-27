@@ -76,9 +76,11 @@ class CreatePaymentInput(BaseModel):
 
 
 class CreatePaymentResponse(BaseModel):
-    """Response with payment intent details"""
+    """Response with Stripe checkout session details"""
     success: bool
-    client_secret: Optional[str] = None
+    session_id: Optional[str] = None
+    url: Optional[str] = None  # Stripe checkout URL
+    client_secret: Optional[str] = None  # Legacy field
     message: str
 
 

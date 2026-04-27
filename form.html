@@ -770,31 +770,76 @@
             
             // If Premium and no manual upload vision results, require Stripe payment
             if (report_type === 'premium' && !window._uploadedVisionResults) {
-                console.log('🔴 Premium tier, no prior payment - redirecting to Stripe');
+                console.log('🔴 Premium tier, no prior payment - checking out with Stripe');
+                const propertyName = document.querySelector('input[name="property_name"]').value;
                 const email = document.querySelector('input[name="email"]').value;
                 
-                if (!email) {
-                    showMessage('❌ Please enter your email before proceeding to payment.', 'error');
+                if (!propertyName || !email) {
+                    showMessage('❌ Please fill all required fields before proceeding to payment.', 'error');
                     return;
                 }
                 
                 try {
+                    // Create submission first
+                    console.log('⏳ Creating submission for payment processing...');
+                    const submitResponse = await fetch('/api/submit-form', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: email,
+                            property_name: propertyName,
+                            airbnb_url: document.querySelector('input[name="airbnb_url"]').value || null,
+                            listing_type: document.querySelector('select[name="listing_type"]').value,
+                            bedrooms: parseInt(document.querySelector('select[name="bedrooms"]').value),
+                            bathrooms: parseInt(document.querySelector('select[name="bathrooms"]').value),
+                            guest_capacity: parseInt(document.querySelector('select[name="guest_capacity"]').value),
+                            total_photos: document.querySelector('select[name="total_photos"]').value,
+                            guest_comfort_checklist: Array.from(document.querySelectorAll('input[name="comfort"]:checked')).map(cb => cb.value),
+                            report_type: report_type,
+                            wants_marketing_emails: document.querySelector('input[name="wants_marketing_emails"]').checked,
+                            vision_results: null
+                        })
+                    });
+                    
+                    if (!submitResponse.ok) {
+                        const errorBody = await submitResponse.json();
+                        console.error('❌ Submit failed:', errorBody);
+                        throw new Error(`Form submission failed: ${errorBody.message || submitResponse.status}`);
+                    }
+                    
+                    const submitResult = await submitResponse.json();
+                    const submissionId = submitResult.submission_id;
+                    console.log(`✅ Submission created: ${submissionId}`);
+                    
+                    // Create Stripe checkout session
+                    console.log('💳 Creating Stripe checkout session...');
                     const checkoutResponse = await fetch('/api/create-checkout-session', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email: email })
+                        body: JSON.stringify({
+                            submission_id: submissionId,
+                            property_name: propertyName
+                        })
                     });
                     
                     if (!checkoutResponse.ok) {
-                        throw new Error(`Checkout failed: ${checkoutResponse.status}`);
+                        const errorBody = await checkoutResponse.json();
+                        console.error('❌ Checkout creation failed:');
+                        console.error('   Status:', checkoutResponse.status);
+                        console.error('   Headers:', checkoutResponse.headers);
+                        console.error('   Body:', errorBody);
+                        throw new Error(`Checkout failed: ${errorBody.detail || errorBody.message || checkoutResponse.status}`);
                     }
                     
                     const { session_id, url } = await checkoutResponse.json();
                     console.log(`✅ Stripe session: ${session_id}`);
+                    console.log(`🔗 Redirecting to: ${url}`);
                     window.location.href = url;
                     return;
                 } catch (error) {
-                    console.error('❌ Stripe error:', error);
+                    console.error('❌ Premium payment flow error:');
+                    console.error('   Message:', error.message);
+                    console.error('   Stack:', error.stack);
                     showMessage(`❌ Payment system error: ${error.message}`, 'error');
                     return;
                 }
@@ -1032,13 +1077,20 @@
             const reportType = document.querySelector('input[name="report_type"]:checked')?.value || 'free';
             console.log(`Report type selected: ${reportType}`);
             
-            // If Premium, redirect to Stripe checkout FIRST
+            // If Premium, MUST create payment intent (cannot skip)
             if (reportType === 'premium') {
-                console.log('🔴 Premium tier detected - must complete payment before photo analysis');
+                console.log('🔴 Premium tier detected - must complete payment before analysis');
                 
-                // Get email from form (if available)
-                const emailInput = document.querySelector('input[name="email"]');
-                const email = emailInput?.value;
+                // Collect required fields for payment
+                const propertyName = document.querySelector('input[name="property_name"]').value;
+                const email = document.querySelector('input[name="email"]').value;
+                
+                // Validate required fields
+                if (!propertyName) {
+                    showMessage('❌ Please enter a property name before proceeding.', 'error');
+                    showStep(1);
+                    return;
+                }
                 
                 if (!email) {
                     showMessage('❌ Please enter your email on Step 3 before proceeding to payment.', 'error');
@@ -1046,26 +1098,66 @@
                     return;
                 }
                 
-                console.log('Redirecting to Stripe checkout session...');
+                console.log(`Property: ${propertyName}, Email: ${email}`);
+                console.log('⏳ Creating temporary submission for payment...');
+                
                 try {
+                    // Create temporary submission to get submission_id
+                    const tempSubmitResponse = await fetch('/api/submit-form', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: email,
+                            property_name: propertyName,
+                            airbnb_url: document.querySelector('input[name="airbnb_url"]').value || null,
+                            listing_type: document.querySelector('select[name="listing_type"]').value,
+                            bedrooms: parseInt(document.querySelector('select[name="bedrooms"]').value),
+                            bathrooms: parseInt(document.querySelector('select[name="bathrooms"]').value),
+                            guest_capacity: parseInt(document.querySelector('select[name="guest_capacity"]').value),
+                            total_photos: document.querySelector('select[name="total_photos"]').value,
+                            guest_comfort_checklist: Array.from(document.querySelectorAll('input[name="comfort"]:checked')).map(cb => cb.value),
+                            report_type: reportType,
+                            wants_marketing_emails: document.querySelector('input[name="wants_marketing_emails"]').checked,
+                            vision_results: window._uploadedVisionResults || null
+                        })
+                    });
+                    
+                    if (!tempSubmitResponse.ok) {
+                        const errorBody = await tempSubmitResponse.json();
+                        console.error('❌ Temp submission failed:', errorBody);
+                        throw new Error(`Submission failed: ${errorBody.message || tempSubmitResponse.status}`);
+                    }
+                    
+                    const submitResult = await tempSubmitResponse.json();
+                    console.log(`✅ Temporary submission created: ${submitResult.submission_id}`);
+                    
+                    // Now create payment intent with submission_id
+                    console.log('💳 Creating Stripe checkout session...');
                     const checkoutResponse = await fetch('/api/create-checkout-session', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email: email })
+                        body: JSON.stringify({
+                            submission_id: submitResult.submission_id,
+                            property_name: propertyName
+                        })
                     });
                     
                     if (!checkoutResponse.ok) {
-                        throw new Error(`Checkout session failed: ${checkoutResponse.status}`);
+                        const errorBody = await checkoutResponse.json();
+                        console.error('❌ Checkout creation failed:', errorBody);
+                        throw new Error(`Checkout failed: ${errorBody.detail || errorBody.message || checkoutResponse.status}`);
                     }
                     
                     const { session_id, url } = await checkoutResponse.json();
                     console.log(`✅ Stripe session created: ${session_id}`);
+                    console.log(`🔗 Redirecting to: ${url}`);
                     
                     // Redirect to Stripe
                     window.location.href = url;
                     return;
                 } catch (error) {
-                    console.error('❌ Stripe redirect failed:', error);
+                    console.error('❌ Premium payment flow error:', error);
+                    console.error('   Stack:', error.stack);
                     showMessage(`❌ Payment system error: ${error.message}`, 'error');
                     return;
                 }

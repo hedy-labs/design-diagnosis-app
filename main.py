@@ -554,20 +554,33 @@ async def verify_email(background_tasks: BackgroundTasks, token: str = Query(...
 async def create_checkout_session(payment_input: CreatePaymentInput, request: Request):
     """
     Create Stripe Checkout Session for premium report payment
+    
+    Input: CreatePaymentInput (submission_id: int, property_name: str)
+    Output: CreatePaymentResponse (session_id, url)
     """
     try:
+        print(f"[CHECKOUT] 📋 Request received:")
+        print(f"[CHECKOUT]    submission_id: {payment_input.submission_id}")
+        print(f"[CHECKOUT]    property_name: {payment_input.property_name}")
+        
         if not stripe_service:
+            print(f"[CHECKOUT] ❌ Stripe service unavailable")
             raise HTTPException(status_code=503, detail="Stripe service unavailable")
         
         if not db:
+            print(f"[CHECKOUT] ❌ Database service unavailable")
             raise HTTPException(status_code=503, detail="Database service unavailable")
         
         logger.info(f"💳 Checkout session requested for submission {payment_input.submission_id}")
+        print(f"[CHECKOUT] 🔍 Looking up submission {payment_input.submission_id}...")
         
         # Verify submission exists
         submission = db.get_form_submission(payment_input.submission_id)
         if not submission:
-            raise HTTPException(status_code=404, detail="Submission not found")
+            print(f"[CHECKOUT] ❌ Submission {payment_input.submission_id} not found in database")
+            raise HTTPException(status_code=404, detail=f"Submission {payment_input.submission_id} not found")
+        
+        print(f"[CHECKOUT] ✅ Submission found: {submission.property_name}")
         
         # Get base URL
         base_url = get_base_url(request)
@@ -582,6 +595,8 @@ async def create_checkout_session(payment_input: CreatePaymentInput, request: Re
         )
         
         logger.info(f"✅ Checkout session created: {session['session_id']}")
+        print(f"[CHECKOUT] ✅ Session created: {session['session_id']}")
+        print(f"[CHECKOUT]    URL: {session['checkout_url']}")
         
         # Store payment record
         db.create_payment(
@@ -593,13 +608,21 @@ async def create_checkout_session(payment_input: CreatePaymentInput, request: Re
         
         return CreatePaymentResponse(
             success=True,
-            client_secret=session['checkout_url'],  # Return checkout URL
-            message="Redirect to Stripe Checkout to complete payment"
+            session_id=session['session_id'],
+            url=session['checkout_url'],
+            message="Stripe Checkout session ready"
         )
     
     except Exception as e:
+        print(f"[CHECKOUT] ❌ Error: {type(e).__name__}: {str(e)}")
+        import traceback
+        print(f"[CHECKOUT] Traceback:")
+        for line in traceback.format_exc().split('\n'):
+            if line:
+                print(f"[CHECKOUT]   {line}")
         logger.error(f"❌ Checkout session creation error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/payment-webhook")
