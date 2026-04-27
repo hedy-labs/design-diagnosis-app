@@ -143,9 +143,58 @@ class TestPilot:
             self.log("❌", f"Payment mark error: {e}")
             return False
     
+    async def verify_uploaded_files_on_disk(self) -> bool:
+        """Step 3A: Verify uploaded photos actually exist on disk"""
+        self.log("⏳", "STEP 3A: Verifying uploaded photos on disk...")
+        
+        if not self.submission_id:
+            self.log("❌", "No submission_id available")
+            return False
+        
+        try:
+            # Check for uploaded photos directory
+            upload_base = Path("/root/design-diagnosis-app/static/uploads")
+            submission_dir = upload_base / f"submission_{self.submission_id}"
+            
+            self.log("ℹ️ ", f"Looking for photos in: {submission_dir}")
+            
+            if not submission_dir.exists():
+                self.log("⚠️ ", f"Upload directory not found: {submission_dir}")
+                self.log("ℹ️ ", f"Upload base exists: {upload_base.exists()}")
+                if upload_base.exists():
+                    self.log("ℹ️ ", f"Contents: {list(upload_base.glob('*'))}")
+                return False
+            
+            # Check for actual image files
+            image_extensions = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp'}
+            photo_files = [f for f in submission_dir.iterdir() 
+                          if f.is_file() and f.suffix.lower() in image_extensions]
+            
+            if not photo_files:
+                self.log("❌", f"No image files found in {submission_dir}")
+                self.log("ℹ️ ", f"Contents: {list(submission_dir.glob('*'))}")
+                return False
+            
+            # Verify each file has content
+            for photo_file in photo_files:
+                size = photo_file.stat().st_size
+                if size == 0:
+                    self.log("⚠️ ", f"Empty file: {photo_file.name}")
+                    return False
+                self.log("✅", f"Photo on disk: {photo_file.name} ({size} bytes)")
+            
+            self.log("✅", f"{len(photo_files)} photos verified on disk")
+            return True
+        
+        except Exception as e:
+            self.log("❌", f"Disk verification error: {e}")
+            import traceback
+            self.log("❌", f"Traceback: {traceback.format_exc()}")
+            return False
+    
     async def verify_pdf_generated(self) -> bool:
-        """Step 3: Verify PDF exists"""
-        self.log("⏳", "STEP 3: Verifying PDF generation...")
+        """Step 3B: Verify PDF exists"""
+        self.log("⏳", "STEP 3B: Verifying PDF generation...")
         
         if not self.submission_id:
             self.log("❌", "No submission_id available")
@@ -263,6 +312,7 @@ class TestPilot:
         steps = [
             ("Submit Form", self.submit_form),
             ("Mark Payment", self.mark_payment_complete),
+            ("Verify Uploaded Files on Disk", self.verify_uploaded_files_on_disk),
             ("Verify PDF", self.verify_pdf_generated),
             ("Verify Vision", self.verify_vision_triggered),
             ("Verify Scorecard", self.verify_experience_logic),

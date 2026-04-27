@@ -36,7 +36,12 @@ BASE_URL = "http://147.182.247.168:8000"  # Default VPS IP
 DEFAULT_BASE_URL = os.getenv("BASE_URL", BASE_URL)
 DB_PATH = os.getenv("DB_PATH", "design_diagnosis.db")
 REPORT_OUTPUT_DIR = os.getenv("REPORT_OUTPUT_DIR", "./reports")
-UPLOADED_PHOTOS_DIR = os.getenv("UPLOADED_PHOTOS_DIR", "./uploaded_photos")
+
+# CRITICAL: Use absolute path for uploads to avoid "black hole" on VPS
+# Default: /root/design-diagnosis-app/static/uploads (or env override)
+_default_upload_dir = "/root/design-diagnosis-app/static/uploads"
+UPLOADED_PHOTOS_DIR = os.getenv("UPLOADED_PHOTOS_DIR", _default_upload_dir)
+
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
@@ -46,17 +51,26 @@ AMAZON_AFFILIATE_ID = os.getenv("AMAZON_AFFILIATE_ID", "")
 os.makedirs(REPORT_OUTPUT_DIR, exist_ok=True)
 os.makedirs(UPLOADED_PHOTOS_DIR, exist_ok=True)
 
+# Log configuration
+logger.info(f"📁 Report output dir: {REPORT_OUTPUT_DIR}")
+logger.info(f"📁 Uploaded photos dir: {UPLOADED_PHOTOS_DIR}")
+print(f"[CONFIG] 📁 Report dir: {REPORT_OUTPUT_DIR}")
+print(f"[CONFIG] 📁 Upload dir: {UPLOADED_PHOTOS_DIR}")
+
 
 def get_uploaded_photos_for_submission(submission_id: int) -> List[str]:
     """
     Retrieve local file paths for photos uploaded by a user.
     
-    Photos are stored in: ./uploaded_photos/submission_{id}/
+    Photos are stored in: UPLOADED_PHOTOS_DIR/submission_{id}/
     Returns: List of local file paths (can be loaded into base64 for Vision AI)
     """
     try:
         submission_dir = os.path.join(UPLOADED_PHOTOS_DIR, f"submission_{submission_id}")
+        print(f"[FALLBACK] 🔍 Looking for photos in: {submission_dir}")
+        
         if not os.path.exists(submission_dir):
+            print(f"[FALLBACK] ❌ Directory does not exist: {submission_dir}")
             logger.info(f"ℹ️  No uploaded photos directory for submission {submission_id}")
             return []
         
@@ -67,11 +81,18 @@ def get_uploaded_photos_for_submission(submission_id: int) -> List[str]:
         for filename in sorted(os.listdir(submission_dir)):
             file_path = os.path.join(submission_dir, filename)
             if os.path.isfile(file_path) and os.path.splitext(filename)[1].lower() in image_extensions:
-                photo_files.append(file_path)
+                # Verify file exists and is readable
+                if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+                    photo_files.append(file_path)
+                    print(f"[FALLBACK] ✅ Found: {filename} ({os.path.getsize(file_path)} bytes)")
+                else:
+                    print(f"[FALLBACK] ⚠️  Skipped invalid file: {filename}")
         
-        logger.info(f"ℹ️  Found {len(photo_files)} uploaded photos for submission {submission_id}")
+        print(f"[FALLBACK] ✅ Located {len(photo_files)} valid photos for submission {submission_id}")
+        logger.info(f"✅ Found {len(photo_files)} uploaded photos for submission {submission_id}")
         return photo_files
     except Exception as e:
+        print(f"[FALLBACK] ❌ Error retrieving photos: {e}")
         logger.error(f"❌ Error retrieving uploaded photos: {e}")
         return []
 
@@ -337,13 +358,23 @@ async def analyze_uploaded_photos(request: Request):
                 file_ext = os.path.splitext(file.filename)[1] or '.jpg'
                 temp_filename = f"{uuid.uuid4().hex}{file_ext}"
                 temp_path = os.path.join(temp_upload_dir, temp_filename)
+                
+                # Write file to disk
                 with open(temp_path, 'wb') as f:
                     f.write(content)
-                temp_photo_paths.append(temp_path)
                 
-                print(f"[UPLOAD] ✅ File {idx + 1}: {file.filename} ({len(content)} bytes, {mime_type})")
-                print(f"[UPLOAD]    Saved to: {temp_path}")
-                logger.info(f"   ✅ File {idx + 1}: {file.filename} ({len(content)} bytes) → {temp_filename}")
+                # CRITICAL: Verify file was actually written to disk
+                if os.path.exists(temp_path):
+                    file_size = os.path.getsize(temp_path)
+                    temp_photo_paths.append(temp_path)
+                    print(f"[UPLOAD] ✅ File {idx + 1}: {file.filename} ({len(content)} bytes, {mime_type})")
+                    print(f"[UPLOAD]    ✅ SAVED TO DISK: {temp_path}")
+                    print(f"[UPLOAD]    ✅ VERIFIED: File exists, size={file_size} bytes")
+                    logger.info(f"✅ File saved to disk: {temp_path} (size: {file_size} bytes)")
+                else:
+                    print(f"[UPLOAD] ❌ FILE WRITE FAILED: {temp_path} does not exist after write!")
+                    logger.error(f"❌ CRITICAL: File write failed for {temp_path}")
+                    raise Exception(f"File write verification failed for {temp_filename}")
             except Exception as e:
                 print(f"[UPLOAD] ❌ File {idx + 1} read/save failed: {e}")
                 logger.warning(f"⚠️  Failed to process file {file.filename}: {e}")
@@ -547,10 +578,20 @@ async def submit_form(form_data: FormSubmitInput, background_tasks: BackgroundTa
                         dst_path = os.path.join(submission_photo_dir, filename)
                         import shutil
                         shutil.move(src_path, dst_path)
-                        logger.info(f"📁 Moved photo: {filename} → submission_{submission.id}/")
-                    print(f"[FORM] 📁 Moved {len(temp_files)} photos to submission_{submission.id}/")
+                        
+                        # CRITICAL: Verify file move succeeded
+                        if os.path.exists(dst_path):
+                            file_size = os.path.getsize(dst_path)
+                            logger.info(f"✅ Photo moved to disk: {dst_path} (size: {file_size} bytes)")
+                            print(f"[FORM] ✅ MOVED: {filename} → submission_{submission.id}/ ({file_size} bytes)")
+                        else:
+                            logger.error(f"❌ CRITICAL: Move verification failed for {filename}")
+                            raise Exception(f"File move verification failed for {filename}")
+                    
+                    print(f"[FORM] ✅ ALL {len(temp_files)} photos verified on disk in submission_{submission.id}/")
             except Exception as move_err:
-                logger.warning(f"⚠️  Failed to move photos: {move_err}")
+                logger.error(f"❌ Failed to move photos: {move_err}")
+                print(f"[FORM] ❌ Photo move error: {move_err}")
         
         logger.info(f"✅ Submission saved with ID: {submission.id}")
         
