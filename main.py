@@ -682,7 +682,6 @@ async def generate_and_send_report(submission_id: int, report_type: str):
         
         # Generate vitality score using real report generator
         from report_generator import generate_report, ReportBuilder
-        from pdf_generator import generate_pdf_report
         
         # Sanitize all form data
         from sanitizer import sanitize_integer, sanitize_text, sanitize_text_for_pdf
