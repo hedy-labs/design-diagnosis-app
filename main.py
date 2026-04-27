@@ -976,11 +976,14 @@ async def generate_and_send_report(submission_id: int, report_type: str):
         
         # Clean guest_comfort_checklist - convert DB keys to human-readable names
         cleaned_comfort_list = []
+        print(f"[REPORT] 🧹 Cleaning {len(submission.guest_comfort_checklist)} comfort items...")
         if submission.guest_comfort_checklist:
             for item_key in submission.guest_comfort_checklist:
                 cleaned_name = clean_item_name(item_key)
                 cleaned_comfort_list.append(cleaned_name)
-                print(f"[REPORT]    {item_key} → {cleaned_name}")
+                print(f"[REPORT]    ✓ {item_key} → {cleaned_name}")
+        else:
+            print(f"[REPORT] ⚠️  No comfort items to clean")
         
         submission_dict = {
             'id': submission.id,

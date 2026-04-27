@@ -28,9 +28,19 @@ async def extract_airbnb_photos(listing_url: str) -> List[str]:
         ModuleNotFoundError: If playwright or playwright-stealth not installed
         ImportError: If other required modules missing
     """
-    # Let native import errors propagate (don't wrap in custom Exception)
+    # Import Playwright (required)
     from playwright.async_api import async_playwright
-    from playwright_stealth import stealth_async
+    
+    # Try to import stealth plugin (optional - fallback to non-stealth if fails)
+    stealth_async = None
+    try:
+        from playwright_stealth import stealth_async
+        print(f"[SCRAPER] ✅ Stealth plugin loaded")
+    except ImportError as e:
+        print(f"[SCRAPER] ⚠️  Stealth plugin not available: {e}")
+        print(f"[SCRAPER]    Falling back to non-stealth mode (slower but functional)")
+        logger.warning(f"⚠️  playwright_stealth not available, using non-stealth mode")
+        stealth_async = None
     
     # Validate URL
     if not _is_valid_listing_url(listing_url):
@@ -42,22 +52,33 @@ async def extract_airbnb_photos(listing_url: str) -> List[str]:
     
     try:
         async with async_playwright() as p:
-            # Launch browser with stealth
+            # Launch browser with anti-detection arguments
             browser = await p.chromium.launch(
                 headless=True,
                 args=[
                     "--disable-blink-features=AutomationControlled",
-                    "--disable-dev-shm-usage"
+                    "--disable-dev-shm-usage",
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox"
                 ]
             )
             
             context = await browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                viewport={"width": 1280, "height": 720}
             )
             
-            # Apply stealth modifications
+            # Apply stealth modifications if available
             page = await context.new_page()
-            await stealth_async(page)
+            if stealth_async:
+                try:
+                    await stealth_async(page)
+                    print(f"[SCRAPER] ✅ Stealth modifications applied to page")
+                except Exception as stealth_error:
+                    print(f"[SCRAPER] ⚠️  Stealth application failed: {stealth_error}")
+                    print(f"[SCRAPER]    Continuing without stealth")
+            else:
+                print(f"[SCRAPER] ℹ️  Stealth plugin unavailable, using standard navigation")
             
             try:
                 # Navigate to listing

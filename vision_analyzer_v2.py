@@ -196,26 +196,58 @@ class VisionAnalyzerV2:
                             },
                             {
                                 "type": "text",
-                                "text": """Analyze this Airbnb/VRBO interior for design quality.
-                                Rate each on 0-6 scale (0=poor, 6=excellent):
-                                
-                                - Lighting Quality: brightness, color temp, shadows (warm/cool)
-                                - Color Harmony: cohesive palette, professional taste, contrast
-                                - Clutter Density: organized/clean (6) vs messy (0)
-                                - Staging Integrity: professional decor (6) vs bare/neglected (0)
-                                - Functionality: guest needs visible - seating, storage, workspace
-                                - Room Type: kitchen, bedroom, bathroom, living, entry, storage, other
-                                
-                                Return ONLY valid JSON (no markdown):
-                                {
-                                    "lighting": 0-6,
-                                    "colors": 0-6,
-                                    "clutter": 0-6,
-                                    "staging": 0-6,
-                                    "functionality": 0-6,
-                                    "room_type": "kitchen|bedroom|bathroom|living|entry|storage|other",
-                                    "notes": "brief assessment"
-                                }"""
+                                "text": """You are an elite interior designer and hospitality strategist analyzing a short-term rental property for guest experience quality.
+
+Adopt the STRATEGIC DESIGNER PERSONA: Look beyond inventory. Analyze EXPERIENCE LOGIC—the invisible guest journey through each space. How does the design MAKE GUESTS FEEL?
+
+ANALYZE THESE EXPERIENCE DIMENSIONS:
+
+1. **Lighting Quality** (0-6: dark→perfect ambiance)
+   - Not just brightness, but warmth. Overhead only = cold (1). Layered with task + accent = inviting (6).
+   - Morning light quality. Evening mood. Bathroom safety vs. master bedroom romance.
+
+2. **Color Harmony** (0-6: clashing→sophisticated)
+   - Professional palette coherence. Intentional or accidental?
+   - Does color SUPPORT the experience or DISTRACT from it?
+   - Warm/cool consistency across rooms (switching color temperature = disorienting).
+
+3. **Clutter Density** (0-6: overwhelmed→serene)
+   - Not storage quantity, but VISUAL REST. Can guests relax or do they feel in a museum?
+   - Personal items vs. staging props. Is this a HOME or a HOTEL?
+
+4. **Staging Integrity** (0-6: neglected→designer-curated)
+   - Professional decor choices (paired nightstands, console behind sofa, entry hooks) = guest confidence.
+   - Bare/mismatched (single nightstand, no seating plan) = "did they try?"
+   - Evidence of CARE vs. INDIFFERENCE.
+
+5. **Functionality** (0-6: survival→luxury)
+   - Visible guest needs: workspace (laptop), seating logic, storage for luggage, bathroom workflow.
+   - Not just presence but ACCESSIBILITY. Can a guest find these things intuitively?
+
+6. **Honest Marketing** (hidden signal)
+   - If photos show wine/chocolate staging NOT provided = TRUST BREAK.
+   - If furniture is oversized for room = CLAUSTROPHOBIA.
+   - Inconsistent bedroom shots = guest arrives to surprise (bad).
+
+ROOM TYPE DETECTION:
+- kitchen, bedroom, bathroom, living, entry, storage, other
+
+STRATEGIC NOTES: 
+- What is the emotional FIRST IMPRESSION of this space?
+- What design choices show HOST INVESTMENT vs. LOW EFFORT?
+- If you stayed here, would you trust the listing photos?
+
+Return ONLY valid JSON (no markdown, no preamble):
+{
+    "lighting": 0-6,
+    "colors": 0-6,
+    "clutter": 0-6,
+    "staging": 0-6,
+    "functionality": 0-6,
+    "room_type": "kitchen|bedroom|bathroom|living|entry|storage|other",
+    "trust_signal": "high|medium|low",
+    "strategic_notes": "1-2 sentences on guest experience and host investment"
+}"""
                             }
                         ]
                     }
@@ -314,6 +346,15 @@ class VisionAnalyzerV2:
             # Convert 0-6 scale to 0-20 scale
             aggregates[dim] = int((avg / 6) * 20)
         
+        # Collect strategic insights
+        strategic_notes = []
+        trust_signals = []
+        for result in results:
+            if result.get('strategic_notes'):
+                strategic_notes.append(result['strategic_notes'])
+            if result.get('trust_signal'):
+                trust_signals.append(result['trust_signal'])
+        
         # Room summaries
         room_summaries = {}
         for result in results:
@@ -323,7 +364,8 @@ class VisionAnalyzerV2:
                     'count': 0,
                     'avg_lighting': 0,
                     'avg_staging': 0,
-                    'notes': []
+                    'notes': [],
+                    'strategic_notes': []
                 }
             
             summary = room_summaries[room]
@@ -332,6 +374,8 @@ class VisionAnalyzerV2:
             summary['avg_staging'] += result.get('staging', 3)
             if result.get('notes'):
                 summary['notes'].append(result['notes'])
+            if result.get('strategic_notes'):
+                summary['strategic_notes'].append(result['strategic_notes'])
         
         # Normalize room summaries
         for room, data in room_summaries.items():
@@ -339,13 +383,28 @@ class VisionAnalyzerV2:
                 data['avg_lighting'] = int((data['avg_lighting'] / data['count'] / 6) * 20)
                 data['avg_staging'] = int((data['avg_staging'] / data['count'] / 6) * 20)
         
+        # Determine overall trust signal
+        overall_trust = 'medium'
+        if trust_signals:
+            high_count = trust_signals.count('high')
+            low_count = trust_signals.count('low')
+            if high_count > len(trust_signals) / 2:
+                overall_trust = 'high'
+            elif low_count > len(trust_signals) / 2:
+                overall_trust = 'low'
+        
+        # Build strategic narrative
+        strategic_narrative = '. '.join(strategic_notes) if strategic_notes else 'Property analysis complete.'
+        
         return {
             'lighting_quality': aggregates['lighting'],
             'color_harmony': aggregates['colors'],
             'clutter_density': aggregates['clutter'],
             'staging_integrity': aggregates['staging'],
             'functionality': aggregates['functionality'],
-            'guest_psychology': 'Property is well-maintained and professionally styled' if aggregates['staging'] > 15 else 'Property needs staging improvements',
+            'guest_psychology': strategic_narrative,
+            'trust_signal': overall_trust,
+            'strategic_insights': strategic_notes,
             'room_summaries': room_summaries
         }
     

@@ -44,6 +44,17 @@ ITEM_NAME_MAPPING = {
     'two_pillows': 'Two Pillows',
     'mattress_protector': 'Mattress Protector',
     'pillow_protector': 'Pillow Protector',
+    'hot_water_in_bathroom': 'Hot Water in Bathroom',
+    'top_sheet': 'Top Sheet',
+    'drain_catcher': 'Drain Catcher',
+    'squeegee': 'Squeegee',
+    'sharp_knives': 'Sharp Knives',
+    'scissors': 'Scissors',
+    'peeler': 'Peeler',
+    'potable_water': 'Potable Water',
+    'laundry_supplies': 'Laundry Supplies',
+    'extra_toilet_paper': 'Extra Toilet Paper',
+    'guest_closet': 'Guest Closet',
 }
 
 
