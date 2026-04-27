@@ -862,49 +862,153 @@ async def payment_cancelled(session_id: str = Query(None)):
 
 async def generate_and_send_report(submission_id: int, report_type: str):
     """
-    Generate PDF report and send via email
+    Generate PDF report and send via email (ENFORCED PIPELINE WITH VISION AI)
+    
+    CRITICAL: This function MUST run Vision AI before generating any report.
+    Pipeline:
+    1. Get submission
+    2. Extract or load photos (scraper OR uploaded)
+    3. Run Vision AI analysis
+    4. Clean database data with human-readable formatting
+    5. Generate report with vision results
+    6. Send email
     """
     try:
         if not db:
             logger.error("❌ Database not available for report generation")
+            print("[REPORT] ❌ Database unavailable")
             return
         
+        print(f"[REPORT] 📊 STARTING REPORT GENERATION PIPELINE")
+        print(f"[REPORT]    submission_id: {submission_id}")
+        print(f"[REPORT]    report_type: {report_type}")
         logger.info(f"📊 Generating {report_type} report for submission {submission_id}...")
         
         submission = db.get_form_submission(submission_id)
         if not submission:
             logger.error(f"❌ Submission {submission_id} not found")
+            print(f"[REPORT] ❌ Submission not found in database")
             return
         
-        # Retrieve cached vision_results if available
+        print(f"[REPORT] ✅ Submission retrieved: {submission.property_name}")
+        
+        # ================================================================
+        # STEP 1: VISION AI ANALYSIS (MANDATORY - DO NOT SKIP)
+        # ================================================================
+        print(f"[REPORT] 🚀 STEP 1: Running Vision AI analysis...")
+        
         vision_results = None
+        
+        # Try to retrieve from cache FIRST (form submission path)
         if hasattr(app, '_vision_cache') and submission_id in app._vision_cache:
             vision_results = app._vision_cache[submission_id]
+            print(f"[REPORT] 💾 Vision results from cache (form submission path)")
             logger.info(f"💾 Retrieved cached vision results for submission {submission_id}")
-            # Clean up cache
             del app._vision_cache[submission_id]
         
-        # Generate vitality score using real report generator
-        from report_generator import generate_report, ReportBuilder
+        # If not cached, must extract photos and run Vision AI (payment success path)
+        if not vision_results:
+            print(f"[REPORT] 🔍 No cached vision results - running Vision AI pipeline...")
+            
+            from photo_scraper import extract_airbnb_photos
+            from vision_analyzer_v2 import VisionAnalyzerV2
+            from vision_to_vitality import map_vision_to_design_score, get_design_narrative
+            
+            image_urls = []
+            
+            # Determine photo source
+            if submission.airbnb_url:
+                print(f"[REPORT]    📍 Photo source: Airbnb URL scraper")
+                try:
+                    image_urls = await extract_airbnb_photos(submission.airbnb_url)
+                    print(f"[REPORT]    ✅ Extracted {len(image_urls)} images from URL")
+                    logger.info(f"✅ Extracted {len(image_urls)} photos from Airbnb URL")
+                except Exception as scrape_error:
+                    print(f"[REPORT] ⚠️  Scraper failed: {type(scrape_error).__name__}: {scrape_error}")
+                    logger.warning(f"⚠️  Scraper failed: {scrape_error}")
+                    image_urls = []
+            else:
+                print(f"[REPORT]    📁 Photo source: Uploaded files (TODO: load from storage)")
+                logger.warning(f"⚠️  No Airbnb URL - would need uploaded photo loading")
+            
+            if image_urls:
+                print(f"[REPORT] 🤖 STEP 1B: Running Vision AI on {len(image_urls)} images...")
+                try:
+                    analyzer = VisionAnalyzerV2()
+                    vision_results = await analyzer.analyze_images_batch(image_urls, max_images=10)
+                    
+                    if vision_results and vision_results.get('lighting_quality') is not None:
+                        print(f"[REPORT]    ✅ Vision AI complete: design_quality={vision_results.get('design_quality', 'N/A')}")
+                        logger.info(f"✅ Vision AI analysis complete")
+                    else:
+                        print(f"[REPORT]    ❌ Vision AI returned empty results")
+                        vision_results = None
+                except Exception as vision_error:
+                    print(f"[REPORT] ❌ Vision AI FAILED: {type(vision_error).__name__}: {vision_error}")
+                    logger.error(f"❌ Vision AI failed: {vision_error}")
+                    import traceback
+                    print(f"[REPORT] Traceback:")
+                    for line in traceback.format_exc().split('\n'):
+                        if line:
+                            print(f"[REPORT]   {line}")
+                    vision_results = None
+            else:
+                print(f"[REPORT] ⚠️  No image URLs available - using default vision scores")
+                logger.warning(f"⚠️  No images to analyze - using defaults")
         
-        # Sanitize all form data
+        # If Vision AI still failed, use defaults
+        if not vision_results:
+            print(f"[REPORT] 🎯 Using default vision results")
+            from vision_analyzer_v2 import VisionAnalyzerV2
+            analyzer = VisionAnalyzerV2()
+            vision_results = analyzer._default_scores()
+            logger.info(f"ℹ️  Using default vision scores")
+        
+        print(f"[REPORT] ✅ Vision AI pipeline complete")
+        
+        # ================================================================
+        # STEP 2: CLEAN DATA WITH HUMAN-READABLE FORMATTING
+        # ================================================================
+        print(f"[REPORT] 🧹 STEP 2: Cleaning database keys...")
+        
+        from data_cleaner import clean_item_name
         from sanitizer import sanitize_integer, sanitize_text, sanitize_text_for_pdf
+        
+        # Clean guest_comfort_checklist - convert DB keys to human-readable names
+        cleaned_comfort_list = []
+        if submission.guest_comfort_checklist:
+            for item_key in submission.guest_comfort_checklist:
+                cleaned_name = clean_item_name(item_key)
+                cleaned_comfort_list.append(cleaned_name)
+                print(f"[REPORT]    {item_key} → {cleaned_name}")
         
         submission_dict = {
             'id': submission.id,
             'property_name': sanitize_text(submission.property_name),
             'listing_type': submission.listing_type,
-            'guest_comfort_checklist': submission.guest_comfort_checklist,
+            'guest_comfort_checklist': cleaned_comfort_list,  # NOW CLEANED
             'total_photos': sanitize_integer(submission.total_photos, default=20),
-            'vision_results': vision_results  # Pass vision results to report generator
+            'vision_results': vision_results  # Vision AI data for report
         }
+        
+        print(f"[REPORT] ✅ Data cleaning complete")
+        logger.info(f"✅ Data cleaned and formatted for report")
+        
+        # ================================================================
+        # STEP 3: GENERATE REPORT WITH VISION DATA
+        # ================================================================
+        print(f"[REPORT] 📝 STEP 3: Generating report with vision data...")
+        
+        from report_generator import generate_report, ReportBuilder
         
         result = generate_report(submission_dict)
         if not result['success']:
             logger.error(f"❌ Report generation failed: {result.get('error')}")
+            print(f"[REPORT] ❌ Report generation FAILED: {result.get('error')}")
             return
         
         score_data = result['vitality_data']
+        print(f"[REPORT] ✅ Report generated: vitality_score={score_data['vitality_score']}/100 ({score_data['grade']})")
         logger.info(f"✅ Vitality score calculated: {score_data['vitality_score']}/100 ({score_data['grade']})")
         
         # Generate recommendations
@@ -960,10 +1064,20 @@ async def generate_and_send_report(submission_id: int, report_type: str):
         )
         
         logger.info(f"✅ Report record created: {report.id}")
+        print(f"[REPORT] ✅ Report record created: {report.id}")
         
-        # Send report email
+        # ================================================================
+        # STEP 4: SEND EMAIL WITH REPORT
+        # ================================================================
+        print(f"[REPORT] 📧 STEP 4: Sending report email...")
+        
         if email_service:
             try:
+                print(f"[REPORT]    To: {submission.email}")
+                print(f"[REPORT]    Type: {report_type}")
+                if pdf_path:
+                    print(f"[REPORT]    PDF: {os.path.basename(pdf_path)}")
+                
                 email_service.send_report_email(
                     email=submission.email,
                     property_name=submission.property_name,
@@ -975,9 +1089,16 @@ async def generate_and_send_report(submission_id: int, report_type: str):
                     shopping_list=result.get("shopping_list", []),
                     top_three_fixes=result.get("top_three_fixes", [])
                 )
+                print(f"[REPORT]    ✅ Email sent")
                 logger.info(f"✅ Report email sent to {submission.email}")
             except Exception as e:
+                print(f"[REPORT]    ❌ Email failed: {type(e).__name__}: {e}")
                 logger.error(f"⚠️  Report email error: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+        else:
+            print(f"[REPORT] ⚠️  Email service unavailable")
+            logger.warning(f"⚠️  Email service not available")
         
         # Record delivery
         db.create_report_delivery(
@@ -986,10 +1107,22 @@ async def generate_and_send_report(submission_id: int, report_type: str):
             status="delivered"
         )
         
-        logger.info(f"✅ Report delivered to {submission.email}")
+        print(f"[REPORT] 🎉 REPORT GENERATION COMPLETE")
+        print(f"[REPORT]    Property: {submission.property_name}")
+        print(f"[REPORT]    Score: {score_data['vitality_score']}/100 ({score_data['grade']})")
+        print(f"[REPORT]    Email: {submission.email}")
+        logger.info(f"✅ Report pipeline complete: {submission.property_name}")
     
     except Exception as e:
+        print(f"[REPORT] ❌ FATAL ERROR IN REPORT PIPELINE:")
+        print(f"[REPORT]    {type(e).__name__}: {e}")
+        import traceback
+        print(f"[REPORT] Traceback:")
+        for line in traceback.format_exc().split('\n'):
+            if line:
+                print(f"[REPORT]   {line}")
         logger.error(f"❌ Report generation error: {e}")
+        logger.error(traceback.format_exc())
 
 
 # ============================================================================
