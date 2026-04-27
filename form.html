@@ -817,8 +817,40 @@
             }
         }
         
+        // Auto-clear error messages when user corrects input
+        function initializeErrorClearingListeners() {
+            // Get all form fields that could trigger validation errors
+            const formFields = document.querySelectorAll(
+                'input[name="property_name"],' +
+                'input[name="airbnb_url"],' +
+                'select[name="listing_type"],' +
+                'select[name="bedrooms"],' +
+                'select[name="bathrooms"],' +
+                'select[name="guest_capacity"],' +
+                'select[name="total_photos"],' +
+                'input[name="comfort"]'
+            );
+            
+            // Add event listeners to clear error messages on input/change
+            formFields.forEach(field => {
+                // Use 'input' for text fields, 'change' for selects and checkboxes
+                const eventType = field.type === 'text' || field.type === 'url' ? 'input' : 'change';
+                
+                field.addEventListener(eventType, function() {
+                    // Only clear error messages if one is currently showing
+                    const messageElement = document.getElementById('message');
+                    if (messageElement && messageElement.className.includes('error')) {
+                        // Clear the message by hiding it (set to empty)
+                        messageElement.textContent = '';
+                        messageElement.className = 'message';
+                    }
+                });
+            });
+        }
+        
         // Initialize
         showStep(1);
+        initializeErrorClearingListeners();
     </script>
 </body>
 </html>

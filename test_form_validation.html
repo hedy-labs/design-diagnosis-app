@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Form Validation Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .pass { color: green; font-weight: bold; }
+        .fail { color: red; font-weight: bold; }
+        input, select { padding: 8px; margin: 5px 0; }
+        .message { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .message.error { background: #ffcccc; color: #cc0000; }
+        .message.success { background: #ccffcc; color: #00cc00; }
+    </style>
+</head>
+<body>
+    <h1>Form Validation Error-Clearing Test</h1>
+    
+    <div id="message" class="message"></div>
+    
+    <div class="test-section">
+        <h2>Test 1: Error appears on blank field submission</h2>
+        <input type="text" id="testField1" placeholder="Leave blank, then click Test">
+        <button onclick="testErrorMessage()">Test Error Message</button>
+        <div id="test1Result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 2: Error clears on input</h2>
+        <input type="text" id="testField2" placeholder="Type something to clear error">
+        <button onclick="testErrorAndClear()">Show Error & Watch It Clear</button>
+        <div id="test2Result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 3: Error clears on select change</h2>
+        <select id="testSelect" onchange="">
+            <option value="">-- Select --</option>
+            <option value="1">Option 1</option>
+            <option value="2">Option 2</option>
+        </select>
+        <button onclick="testSelectClear()">Show Error & Select an Option</button>
+        <div id="test3Result"></div>
+    </div>
+
+    <script>
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = `message ${type}`;
+        }
+        
+        function initializeErrorClearingListeners() {
+            const formFields = document.querySelectorAll(
+                'input[name="property_name"],' +
+                'input[name="airbnb_url"],' +
+                'input#testField1,' +
+                'input#testField2,' +
+                'select#testSelect,' +
+                'select[name="listing_type"],' +
+                'select[name="bedrooms"],' +
+                'select[name="bathrooms"],' +
+                'select[name="guest_capacity"],' +
+                'select[name="total_photos"],' +
+                'input[name="comfort"]'
+            );
+            
+            formFields.forEach(field => {
+                const eventType = field.type === 'text' || field.type === 'url' ? 'input' : 'change';
+                
+                field.addEventListener(eventType, function() {
+                    const messageElement = document.getElementById('message');
+                    if (messageElement && messageElement.className.includes('error')) {
+                        messageElement.textContent = '';
+                        messageElement.className = 'message';
+                        
+                        // Update test results
+                        const resultDiv = document.getElementById('test2Result');
+                        if (resultDiv) {
+                            resultDiv.innerHTML = '<span class="pass">✅ PASS: Error message cleared automatically</span>';
+                        }
+                    }
+                });
+            });
+        }
+        
+        function testErrorMessage() {
+            const field = document.getElementById('testField1');
+            if (!field.value.trim()) {
+                showMessage('❌ Please fill in all required fields', 'error');
+                document.getElementById('test1Result').innerHTML = '<span class="pass">✅ PASS: Error message displayed</span>';
+            }
+        }
+        
+        function testErrorAndClear() {
+            showMessage('❌ This is a test error message', 'error');
+            document.getElementById('test2Result').innerHTML = '<span style="color: blue;">Now start typing in the input field below...</span>';
+        }
+        
+        function testSelectClear() {
+            showMessage('❌ Please select a valid option', 'error');
+            document.getElementById('test3Result').innerHTML = '<span style="color: blue;">Now select an option from the dropdown...</span>';
+        }
+        
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            initializeErrorClearingListeners();
+            document.getElementById('test1Result').innerHTML = '<span style="color: blue;">Ready for testing</span>';
+        });
+    </script>
+</body>
+</html>
