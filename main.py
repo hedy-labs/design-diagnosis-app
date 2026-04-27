@@ -1009,8 +1009,10 @@ async def generate_and_send_report(submission_id: int, report_type: str):
                     image_urls = []
             
             # STRATEGY 2: Check for manually uploaded photos (fallback)
-            if not image_urls and scraper_attempted:
-                print(f"[REPORT]    📁 Strategy 2: Checking for uploaded photos...")
+            # Trigger if: scraper failed (0 images) OR found too few images (< 3)
+            if scraper_attempted and (not image_urls or len(image_urls) < 3):
+                current_count = len(image_urls)
+                print(f"[REPORT]    📁 Strategy 2: Checking for uploaded photos (have {current_count}, need 3+)...")
                 uploaded_photo_paths = get_uploaded_photos_for_submission(submission_id)
                 
                 if uploaded_photo_paths:

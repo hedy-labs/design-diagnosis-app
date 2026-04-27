@@ -233,21 +233,44 @@ async def _extract_image_urls(page, listing_url: str) -> List[str]:
     """
     
     try:
-        # Strategy 1: Airbnb-specific data-testid
-        print(f"[SCRAPER] 📸 [Strategy 1] data-testid extraction...")
-        logger.info("📸 Extracting via data-testid strategy...")
+        # Strategy 1: Airbnb photo grid classes (most reliable)
+        print(f"[SCRAPER] 📸 [Strategy 1] Airbnb grid extraction...")
+        logger.info("📸 Extracting via Airbnb grid classes...")
         try:
             images = await page.evaluate("""
                 () => {
                     const urls = [];
-                    // Look for images in carousels and photo grids
-                    document.querySelectorAll('[data-testid*="photo"], [role="img"]').forEach(el => {
-                        if (el.src) urls.push(el.src);
-                        else if (el.style.backgroundImage) {
-                            const match = el.style.backgroundImage.match(/url\\("([^"]+)"\\)/);
-                            if (match) urls.push(match[1]);
+                    const seen = new Set();  // Avoid duplicates
+                    
+                    // Airbnb photo grid containers (.itu7ddv = photo carousel, ._6tbg2q = grid item)
+                    document.querySelectorAll('[class*="itu7ddv"], [class*="_6tbg2q"], [class*="photo"], [class*="gallery"]').forEach(container => {
+                        // Get img tags
+                        container.querySelectorAll('img').forEach(img => {
+                            if (img.src && !seen.has(img.src)) {
+                                urls.push(img.src);
+                                seen.add(img.src);
+                            }
+                        });
+                        
+                        // Get background images
+                        if (container.style.backgroundImage) {
+                            const match = container.style.backgroundImage.match(/url\\("?([^"\\)]+)"?\\)/);
+                            if (match && !seen.has(match[1])) {
+                                urls.push(match[1]);
+                                seen.add(match[1]);
+                            }
                         }
                     });
+                    
+                    // Also check data-testid attributes
+                    document.querySelectorAll('[data-testid*="photo"], [data-testid*="gallery"]').forEach(el => {
+                        const src = el.getAttribute('src') || (el.style.backgroundImage ? el.style.backgroundImage.match(/url\\("?([^"\\)]+)"?\\)/)?.[1] : null);
+                        if (src && !seen.has(src)) {
+                            urls.push(src);
+                            seen.add(src);
+                        }
+                    });
+                    
                     return urls;
                 }
             """)
@@ -255,34 +278,61 @@ async def _extract_image_urls(page, listing_url: str) -> List[str]:
             print(f"[SCRAPER] ❌ [Strategy 1] JS evaluation failed: {e}")
             images = []
         
-        if images:
+        if images and len(images) >= 5:
             print(f"[SCRAPER] ✅ [Strategy 1] Found {len(images)} images")
-            logger.info(f"   Found {len(images)} images via data-testid")
+            logger.info(f"   Found {len(images)} images via grid classes")
             return _clean_image_urls(images)
+        elif images:
+            print(f"[SCRAPER] ⚠️  [Strategy 1] Found only {len(images)} images (need 5+), trying next strategy")
         else:
             print(f"[SCRAPER] ⏭️  [Strategy 1] No images found, trying next strategy")
         
-        # Strategy 2: Picture/source srcset (responsive images)
-        logger.info("📸 Extracting via picture > source strategy...")
-        images = await page.evaluate("""
-            () => {
-                const urls = [];
-                document.querySelectorAll('picture source').forEach(source => {
-                    const srcset = source.getAttribute('srcset');
-                    if (srcset) {
-                        srcset.split(',').forEach(item => {
-                            const url = item.trim().split(' ')[0];
-                            if (url) urls.push(url);
-                        });
-                    }
-                });
-                return urls;
-            }
-        """)
+        # Strategy 2: Picture/source srcset + Airbnb img tags
+        print(f"[SCRAPER] 📸 [Strategy 2] Picture/source + Airbnb img tags...")
+        logger.info("📸 Extracting via picture > source + img strategy...")
+        try:
+            images = await page.evaluate("""
+                () => {
+                    const urls = [];
+                    const seen = new Set();
+                    
+                    // Picture > source (responsive images)
+                    document.querySelectorAll('picture source').forEach(source => {
+                        const srcset = source.getAttribute('srcset');
+                        if (srcset) {
+                            srcset.split(',').forEach(item => {
+                                const url = item.trim().split(' ')[0];
+                                if (url && !seen.has(url)) {
+                                    urls.push(url);
+                                    seen.add(url);
+                                }
+                            });
+                        }
+                    });
+                    
+                    // All Airbnb img tags
+                    document.querySelectorAll('img[src*="airbnbnb"], img[src*="a0.muscache"], img[src*="photos"]').forEach(img => {
+                        if (img.src && !seen.has(img.src)) {
+                            urls.push(img.src);
+                            seen.add(img.src);
+                        }
+                    });
+                    
+                    return urls;
+                }
+            """)
+        except Exception as e:
+            print(f"[SCRAPER] ❌ [Strategy 2] JS evaluation failed: {e}")
+            images = []
         
-        if images:
-            logger.info(f"   Found {len(images)} images via picture/source")
+        if images and len(images) >= 5:
+            print(f"[SCRAPER] ✅ [Strategy 2] Found {len(images)} images")
+            logger.info(f"   Found {len(images)} images via picture/source + img")
             return _clean_image_urls(images)
+        elif images:
+            print(f"[SCRAPER] ⚠️  [Strategy 2] Found only {len(images)} images, trying next strategy")
+        else:
+            print(f"[SCRAPER] ⏭️  [Strategy 2] No images found, trying next strategy")
         
         # Strategy 3: All img tags with cdn domains
         logger.info("📸 Extracting via img tag strategy...")
