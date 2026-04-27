@@ -205,6 +205,74 @@ async def health_check():
     )
 
 
+@app.post("/api/analyze-listing")
+async def analyze_listing(request_data: dict):
+    """
+    Analyze Airbnb/VRBO listing: Extract photos + Vision AI analysis
+    
+    Input: { "airbnb_url": "https://www.airbnb.com/rooms/..." }
+    Output: { "success": bool, "vision_results": {...} }
+    """
+    try:
+        airbnb_url = request_data.get("airbnb_url")
+        if not airbnb_url:
+            return {"success": False, "error": "Missing airbnb_url"}
+        
+        logger.info(f"🔍 Analyzing listing: {airbnb_url}")
+        
+        # Import here to avoid startup dependency issues
+        import asyncio
+        from photo_scraper import extract_airbnb_photos
+        from vision_analyzer_v2 import VisionAnalyzerV2
+        from vision_to_vitality import map_vision_to_design_score, get_design_narrative
+        
+        # Extract photos from listing
+        logger.info(f"📸 Extracting photos...")
+        try:
+            image_urls = await extract_airbnb_photos(airbnb_url)
+            if not image_urls:
+                logger.warning("⚠️  No images extracted from listing")
+                return {"success": False, "error": "No images found in listing"}
+            
+            logger.info(f"✅ Extracted {len(image_urls)} images")
+        except Exception as e:
+            logger.error(f"❌ Photo extraction failed: {e}")
+            return {"success": False, "error": f"Could not extract photos: {str(e)}"}
+        
+        # Analyze with Vision AI
+        logger.info(f"🤖 Analyzing {len(image_urls)} images with Vision AI...")
+        analyzer = VisionAnalyzerV2()
+        vision_results = await analyzer.analyze_images_batch(image_urls, max_images=10)
+        
+        if not vision_results:
+            logger.warning("⚠️  Vision analysis failed")
+            return {"success": False, "error": "Vision analysis failed"}
+        
+        # Map to design score
+        design_mapping = map_vision_to_design_score(vision_results)
+        design_narrative = get_design_narrative(vision_results, design_mapping)
+        
+        logger.info(f"✅ Analysis complete: design_score={design_mapping['design_score']}/30")
+        
+        return {
+            "success": True,
+            "vision_results": {
+                "lighting_quality": vision_results.get('lighting_quality', 10),
+                "color_harmony": vision_results.get('color_harmony', 10),
+                "clutter_density": vision_results.get('clutter_density', 10),
+                "staging_integrity": vision_results.get('staging_integrity', 10),
+                "functionality": vision_results.get('functionality', 10),
+                "design_score": design_mapping['design_score'],
+                "design_narrative": design_narrative,
+                "room_summaries": vision_results.get('room_summaries', {})
+            }
+        }
+    
+    except Exception as e:
+        logger.error(f"❌ Listing analysis error: {e}")
+        return {"success": False, "error": str(e)}
+
+
 @app.post("/api/submit-form", response_model=FormSubmitResponse)
 async def submit_form(form_data: FormSubmitInput, background_tasks: BackgroundTasks, request: Request):
     """
