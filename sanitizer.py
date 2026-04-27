@@ -10,7 +10,8 @@ Provides sanitization functions for all data types:
 
 import re
 import logging
-from typing import Union, Optional
+from typing import Union, Optional, List
+from data_cleaner import clean_item_name
 
 logger = logging.getLogger(__name__)
 
@@ -308,3 +309,16 @@ def sanitize_form_input(data: dict) -> dict:
         'guest_comfort_checklist': sanitize_list_of_strings(data.get('guest_comfort_checklist', [])),
         'report_type': sanitize_choice(data.get('report_type', 'free'), ['free', 'premium'], 'free'),
     }
+
+
+def clean_comfort_checklist_display(checklist: List[str]) -> List[str]:
+    """
+    Convert comfort checklist items from internal keys to human-readable names.
+    
+    Example:
+        ['bedside_lamps', 'two_pillows_per_guest'] → ['Bedside Lamps', 'Two Pillows Per Guest']
+    """
+    if not isinstance(checklist, list):
+        return []
+    
+    return [clean_item_name(item) for item in checklist if item]

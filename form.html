@@ -777,21 +777,27 @@
                     wants_marketing_emails: document.querySelector('input[name="wants_marketing_emails"]').checked
                 };
                 
-                // Attempt to scrape photos and analyze with Vision AI
+                // MANDATORY: Scrape photos and analyze with Vision AI
+                // This is required for all submissions
+                if (!airbnb_url) {
+                    showMessage('❌ Airbnb/VRBO URL is required to analyze your property.', 'error');
+                    submitBtn.disabled = false;
+                    return;
+                }
+                
                 try {
-                    if (airbnb_url) {
-                        const visionResponse = await fetch('/api/analyze-listing', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ airbnb_url: airbnb_url })
-                        });
-                        
-                        if (visionResponse.ok) {
-                            const visionData = await visionResponse.json();
-                            if (visionData.success) {
-                                formData.vision_results = visionData.vision_results;
-                                showMessage('✅ Property analysis complete. Submitting form...', 'loading');
-                            }
+                    const visionResponse = await fetch('/api/analyze-listing', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ airbnb_url: airbnb_url }),
+                        timeout: 30000  // 30 second timeout
+                    });
+                    
+                    if (visionResponse.ok) {
+                        const visionData = await visionResponse.json();
+                        if (visionData.success) {
+                            formData.vision_results = visionData.vision_results;
+                            showMessage('✅ Property analysis complete. Submitting form...', 'loading');
                         } else {
                             // Vision analysis failed - show fallback
                             showMessage('⚠️  Could not automatically fetch photos. Please upload them manually.', 'error');
@@ -799,6 +805,12 @@
                             submitBtn.disabled = false;
                             return;
                         }
+                    } else {
+                        // Vision API returned error
+                        showMessage('⚠️  Could not automatically fetch photos. Please upload them manually.', 'error');
+                        document.getElementById('photoFallback').style.display = 'block';
+                        submitBtn.disabled = false;
+                        return;
                     }
                 } catch (e) {
                     // Vision scraper error - show fallback
