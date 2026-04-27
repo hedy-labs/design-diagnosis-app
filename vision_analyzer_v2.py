@@ -133,7 +133,7 @@ class VisionAnalyzerV2:
     
     async def _analyze_single_image(self, image_url: str) -> Dict:
         """
-        Analyze one image using Claude Vision API.
+        Analyze one image using Claude Vision API (URL or base64).
         
         Returns: {
             'success': bool,
@@ -154,6 +154,18 @@ class VisionAnalyzerV2:
             
             logger.info(f"   🔍 Analyzing: {image_url[:60]}...")
             
+            # Determine if URL or base64-encoded data URI
+            if image_url.startswith("data:"):
+                # Base64-encoded image data URI
+                logger.info(f"   📷 Processing base64-encoded image...")
+                image_source = self._parse_data_uri(image_url)
+            else:
+                # HTTP URL
+                image_source = {
+                    "type": "url",
+                    "url": image_url
+                }
+            
             message = client.messages.create(
                 model=self.model,
                 max_tokens=300,
@@ -163,10 +175,7 @@ class VisionAnalyzerV2:
                         "content": [
                             {
                                 "type": "image",
-                                "source": {
-                                    "type": "url",
-                                    "url": image_url
-                                }
+                                "source": image_source
                             },
                             {
                                 "type": "text",
@@ -214,6 +223,46 @@ class VisionAnalyzerV2:
         except Exception as e:
             logger.error(f"   ❌ Analysis failed: {e}")
             return {'success': False, 'error': str(e)}
+    
+    def _parse_data_uri(self, data_uri: str) -> Dict:
+        """
+        Parse data URI and convert to Claude Vision API base64 format.
+        
+        Input: data:image/jpeg;base64,/9j/4AAQSkZJRg...
+        Output: {"type": "base64", "media_type": "image/jpeg", "data": "/9j/4AAQSkZJRg..."}
+        """
+        try:
+            # Extract parts: data:image/jpeg;base64,{base64_data}
+            if not data_uri.startswith("data:"):
+                raise ValueError("Invalid data URI format")
+            
+            # Remove "data:" prefix
+            rest = data_uri[5:]
+            
+            # Split on comma to get mime type and data
+            parts = rest.split(',', 1)
+            if len(parts) != 2:
+                raise ValueError("Malformed data URI")
+            
+            mime_part, base64_data = parts
+            
+            # Extract MIME type (e.g., "image/jpeg;base64" -> "image/jpeg")
+            if ';' in mime_part:
+                media_type = mime_part.split(';')[0]
+            else:
+                media_type = mime_part or "image/jpeg"
+            
+            logger.info(f"   📷 Data URI parsed: {media_type}, {len(base64_data)} bytes")
+            
+            return {
+                "type": "base64",
+                "media_type": media_type,
+                "data": base64_data
+            }
+        
+        except Exception as e:
+            logger.error(f"   ❌ Data URI parsing failed: {e}")
+            raise
     
     def _aggregate_scores(self, results: List[Dict]) -> Dict:
         """

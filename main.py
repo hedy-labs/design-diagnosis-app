@@ -208,7 +208,7 @@ async def health_check():
 @app.post("/api/analyze-uploaded-photos")
 async def analyze_uploaded_photos(request: Request):
     """
-    Analyze user-uploaded photos: Vision AI analysis (no web scraping)
+    Analyze user-uploaded photos: Real Claude Vision AI analysis
     
     Input: multipart/form-data with 'photos' files
     Output: { "success": bool, "vision_results": {...} }
@@ -218,53 +218,66 @@ async def analyze_uploaded_photos(request: Request):
         uploaded_files = form.getlist('photos')
         
         if not uploaded_files or len(uploaded_files) == 0:
+            logger.error("❌ No photos provided to /api/analyze-uploaded-photos")
             return {"success": False, "error": "No photos provided"}
         
-        logger.info(f"🔍 Analyzing {len(uploaded_files)} uploaded photos...")
+        logger.info(f"📸 Processing {len(uploaded_files)} uploaded photos...")
+        print(f"[UPLOAD] 📸 Analyzing {len(uploaded_files)} uploaded photos")
         
-        # Download/read files and create temporary URLs or base64 data
-        import io
         from vision_analyzer_v2 import VisionAnalyzerV2
         from vision_to_vitality import map_vision_to_design_score, get_design_narrative
+        import base64
         
-        # For uploaded files, we need to convert to data URIs for vision analysis
+        # Convert uploaded files to base64 data URIs
         image_data_uris = []
-        for file in uploaded_files:
+        for idx, file in enumerate(uploaded_files):
             try:
                 content = await file.read()
-                import base64
                 b64 = base64.b64encode(content).decode('utf-8')
                 
                 # Determine MIME type
                 mime_type = file.content_type or 'image/jpeg'
                 data_uri = f"data:{mime_type};base64,{b64}"
                 image_data_uris.append(data_uri)
+                
+                print(f"[UPLOAD] ✅ File {idx + 1}: {file.filename} ({len(content)} bytes, {mime_type})")
+                logger.info(f"   ✅ File {idx + 1}: {file.filename} ({len(content)} bytes)")
             except Exception as e:
+                print(f"[UPLOAD] ❌ File {idx + 1} read failed: {e}")
                 logger.warning(f"⚠️  Failed to read file {file.filename}: {e}")
                 continue
         
         if not image_data_uris:
-            return {"success": False, "error": "Could not read uploaded photos"}
+            logger.error("❌ No valid image data URIs created")
+            return {"success": False, "error": "Could not read any uploaded photos"}
         
-        logger.info(f"✅ Prepared {len(image_data_uris)} photos for analysis")
+        logger.info(f"✅ Prepared {len(image_data_uris)} photos for Vision AI analysis")
+        print(f"[UPLOAD] 🚀 Sending {len(image_data_uris)} images to Claude Vision API")
         
-        # Analyze with Vision AI
+        # Analyze with Vision AI (real analysis, not mocked)
         try:
             analyzer = VisionAnalyzerV2()
-            # Note: Vision analyzer expects HTTP URLs; data URIs may not work with Claude API
-            # For now, return placeholder vision results
-            logger.warning("⚠️  Note: Direct file analysis not yet supported; using default vision results")
-            vision_results = analyzer._default_scores()
+            print(f"[UPLOAD] 🤖 Starting Vision AI batch analysis...")
+            vision_results = await analyzer.analyze_images_batch(image_data_uris, max_images=10)
+            
+            if not vision_results or vision_results.get('lighting_quality') is None:
+                raise Exception("Vision analysis returned empty results")
+            
+            print(f"[UPLOAD] ✅ Vision analysis complete: design_score={vision_results.get('design_quality', 'N/A')}")
+            logger.info(f"✅ Vision analysis complete")
             
         except Exception as e:
+            print(f"[UPLOAD] ❌ Vision analysis failed: {e}")
             logger.error(f"❌ Vision analysis failed: {e}")
-            return {"success": False, "error": f"Analysis failed: {str(e)}"}
+            return {"success": False, "error": f"Vision analysis failed: {str(e)}"}
         
         # Map to design score
+        print(f"[UPLOAD] 📊 Mapping vision results to design score...")
         design_mapping = map_vision_to_design_score(vision_results)
         design_narrative = get_design_narrative(vision_results, design_mapping)
         
-        logger.info(f"✅ Analysis complete")
+        logger.info(f"✅ Design mapping complete: design_score={design_mapping['design_score']}/30")
+        print(f"[UPLOAD] ✅ Design mapping: score={design_mapping['design_score']}/30")
         
         return {
             "success": True,
@@ -281,7 +294,10 @@ async def analyze_uploaded_photos(request: Request):
         }
     
     except Exception as e:
-        logger.error(f"❌ Uploaded photo analysis error: {e}")
+        print(f"[UPLOAD] ❌ FATAL ERROR: {e}")
+        logger.error(f"❌ Uploaded photo analysis fatal error: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return {"success": False, "error": str(e)}
 
 
