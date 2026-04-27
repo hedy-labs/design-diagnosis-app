@@ -618,29 +618,39 @@
             </div>
             
             <!-- Fallback: Manual Photo Upload (Hidden by default) -->
-            <div id="photoFallback" style="display: none; margin-top: 30px; padding: 20px; background: #fff3cd; border: 2px dashed #ffc107; border-radius: 8px;">
-                <h3 style="color: #856404; margin-top: 0;">📸 Upload Property Photos</h3>
-                <p style="color: #856404; margin-bottom: 15px;">We couldn't automatically fetch your listing photos. Please upload 3-5 clear photos of your property interior to continue.</p>
+            <div id="photoFallback" style="display: none; margin-top: 30px; padding: 25px; background: #fff3cd; border: 3px dashed #ffc107; border-radius: 8px;">
+                <h3 style="color: #856404; margin-top: 0; margin-bottom: 10px;">📸 Upload Property Photos</h3>
+                <p style="color: #856404; margin-bottom: 20px;">We couldn't automatically fetch your listing photos. Please upload 3-5 clear photos of your property interior to continue with the analysis.</p>
                 
-                <div style="border: 2px dashed #ffc107; border-radius: 6px; padding: 30px; text-align: center; background: white; margin-bottom: 15px;">
-                    <input type="file" id="manualPhotoUpload" multiple accept="image/*" style="display: none;">
-                    <button type="button" onclick="document.getElementById('manualPhotoUpload').click()" style="background: #ffc107; color: #333; padding: 12px 30px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px;">
-                        Choose Photos
+                <!-- Photo Upload Zone -->
+                <div style="border: 3px dashed #ffc107; border-radius: 8px; padding: 40px 20px; text-align: center; background: white; margin-bottom: 20px; cursor: pointer;" ondrop="handlePhotoDrop(event)" ondragover="event.preventDefault()" ondragleave="event.preventDefault()">
+                    <input type="file" id="manualPhotoUpload" multiple accept="image/*" style="display: none;" onchange="handlePhotoSelect(event)">
+                    
+                    <div style="font-size: 48px; margin-bottom: 15px;">📷</div>
+                    
+                    <button type="button" onclick="document.getElementById('manualPhotoUpload').click()" style="background: #ffc107; color: #333; padding: 14px 40px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; margin-bottom: 15px;">
+                        + Choose Photos
                     </button>
-                    <p style="color: #666; margin-top: 10px; font-size: 14px;">Or drag and drop photos here</p>
+                    <p style="color: #666; margin: 10px 0; font-size: 14px;">Or drag and drop photos here</p>
+                    <p style="color: #999; margin: 5px 0; font-size: 12px;">(JPG, PNG, up to 5 files)</p>
                 </div>
                 
-                <div id="uploadedPhotosPreview" style="display: none;">
-                    <p style="color: #856404; font-weight: bold;">Selected Photos:</p>
-                    <div id="photoList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 10px;"></div>
+                <!-- Photos Preview -->
+                <div id="uploadedPhotosPreview" style="display: none; margin-bottom: 20px; background: white; padding: 15px; border-radius: 6px;">
+                    <p style="color: #856404; font-weight: bold; margin-top: 0;">✅ Selected Photos:</p>
+                    <div id="photoList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; margin-top: 10px;"></div>
+                    <p id="photoCount" style="color: #666; font-size: 14px; margin-top: 10px;"></p>
                 </div>
                 
-                <button type="button" onclick="continueWithoutAutoScrape()" style="background: #28a745; color: white; padding: 12px 30px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 15px;">
-                    Continue with Manual Photos
-                </button>
-                <button type="button" onclick="goBackToEditUrl()" style="background: #6c757d; color: white; padding: 12px 30px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 15px; margin-left: 10px;">
-                    Try Different URL
-                </button>
+                <!-- Action Buttons -->
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px;">
+                    <button type="button" id="analyzePhotosBtn" onclick="analyzeUploadedPhotos()" style="background: #28a745; color: white; padding: 14px 30px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; flex: 1; min-width: 200px; display: none;">
+                        🚀 Analyze Uploaded Photos
+                    </button>
+                    <button type="button" onclick="goBackToEditUrl()" style="background: #6c757d; color: white; padding: 14px 30px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px;">
+                        ← Try Different URL
+                    </button>
+                </div>
             </div>
             
             <!-- Buttons -->
@@ -891,25 +901,140 @@
             }
         }
         
-        // Fallback handler: User uploads photos manually
-        function continueWithoutAutoScrape() {
+        // Fallback handler: Photo upload with drag-and-drop support
+        let uploadedFiles = [];
+        
+        function handlePhotoSelect(event) {
+            uploadedFiles = Array.from(event.target.files);
+            updatePhotoPreview();
+        }
+        
+        function handlePhotoDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            uploadedFiles = Array.from(event.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            
+            // Update file input to match
             const fileInput = document.getElementById('manualPhotoUpload');
-            if (fileInput.files.length === 0) {
-                alert('Please select at least 1 photo before continuing.');
+            const dataTransfer = new DataTransfer();
+            uploadedFiles.forEach(f => dataTransfer.items.add(f));
+            fileInput.files = dataTransfer.files;
+            
+            updatePhotoPreview();
+        }
+        
+        function updatePhotoPreview() {
+            const preview = document.getElementById('uploadedPhotosPreview');
+            const photoList = document.getElementById('photoList');
+            const photoCount = document.getElementById('photoCount');
+            const analyzeBtn = document.getElementById('analyzePhotosBtn');
+            
+            if (uploadedFiles.length === 0) {
+                preview.style.display = 'none';
+                analyzeBtn.style.display = 'none';
                 return;
             }
             
-            if (fileInput.files.length < 3) {
-                const proceed = confirm(`You've selected ${fileInput.files.length} photo(s). We recommend at least 3. Continue anyway?`);
+            preview.style.display = 'block';
+            photoList.innerHTML = '';
+            
+            uploadedFiles.forEach((file, idx) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.width = '100%';
+                    img.style.height = '100%';
+                    img.style.objectFit = 'cover';
+                    img.style.borderRadius = '4px';
+                    img.style.border = '2px solid #ffc107';
+                    
+                    const container = document.createElement('div');
+                    container.style.position = 'relative';
+                    container.style.paddingBottom = '100%';
+                    container.style.overflow = 'hidden';
+                    container.appendChild(img);
+                    
+                    photoList.appendChild(container);
+                };
+                reader.readAsDataURL(file);
+            });
+            
+            const count = uploadedFiles.length;
+            photoCount.innerHTML = `${count} photo${count !== 1 ? 's' : ''} selected ${count < 3 ? '(⚠️ recommend 3+)' : '(✅ ready)'}`;
+            
+            analyzeBtn.style.display = 'flex';
+            if (count < 3) {
+                analyzeBtn.style.opacity = '0.6';
+                analyzeBtn.style.cursor = 'not-allowed';
+            } else {
+                analyzeBtn.style.opacity = '1';
+                analyzeBtn.style.cursor = 'pointer';
+            }
+        }
+        
+        async function analyzeUploadedPhotos() {
+            if (uploadedFiles.length === 0) {
+                alert('Please select at least 1 photo before analyzing.');
+                return;
+            }
+            
+            if (uploadedFiles.length < 3) {
+                const proceed = confirm(`You've selected ${uploadedFiles.length} photo(s). We recommend at least 3. Continue with analysis?`);
                 if (!proceed) return;
             }
             
-            // TODO: In Phase 4, implement photo upload to backend
-            showMessage('📤 Manual photo upload feature coming soon. Please try a different URL.', 'error');
+            const analyzeBtn = document.getElementById('analyzePhotosBtn');
+            analyzeBtn.disabled = true;
+            analyzeBtn.style.opacity = '0.5';
+            
+            showMessage('🔄 Analyzing uploaded photos. This may take 10-15 seconds...', 'loading');
+            
+            try {
+                // Create FormData for file upload
+                const formData = new FormData();
+                uploadedFiles.forEach((file, idx) => {
+                    formData.append('photos', file);
+                });
+                
+                // Send to backend for vision analysis
+                const response = await fetch('/api/analyze-uploaded-photos', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Analysis failed. Please try again.');
+                }
+                
+                const result = await response.json();
+                
+                if (result.success && result.vision_results) {
+                    // Store vision results in form data
+                    const formElement = document.getElementById('designForm');
+                    window._uploadedVisionResults = result.vision_results;
+                    
+                    showMessage('✅ Photo analysis complete! Your form is ready to submit.', 'success');
+                    document.getElementById('photoFallback').style.display = 'none';
+                    
+                    // Proceed to next step or allow form submission
+                    showStep(3);  // Go to final step
+                } else {
+                    throw new Error(result.error || 'Analysis returned no results.');
+                }
+            } catch (error) {
+                console.error('Photo analysis error:', error);
+                showMessage(`❌ Analysis failed: ${error.message}`, 'error');
+                analyzeBtn.disabled = false;
+                analyzeBtn.style.opacity = '1';
+            }
         }
         
         function goBackToEditUrl() {
             document.getElementById('photoFallback').style.display = 'none';
+            uploadedFiles = [];
+            document.getElementById('uploadedPhotosPreview').style.display = 'none';
+            document.getElementById('manualPhotoUpload').value = '';
             showStep(1);
             showMessage('', '');
             document.getElementById('submitBtn').disabled = false;

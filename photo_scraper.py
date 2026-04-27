@@ -60,25 +60,55 @@ async def extract_airbnb_photos(listing_url: str) -> List[str]:
         
         try:
             # Navigate to listing
-            logger.info(f"📄 Loading listing page...")
-            await page.goto(listing_url, wait_until="networkidle", timeout=30000)
+            logger.info(f"📄 Loading listing page: {listing_url}")
+            try:
+                await page.goto(listing_url, wait_until="networkidle", timeout=30000)
+                logger.info(f"✅ Page loaded successfully")
+            except Exception as nav_error:
+                logger.error(f"❌ Page navigation failed: {nav_error}")
+                logger.info(f"   URL: {listing_url}")
+                logger.info(f"   Error type: {type(nav_error).__name__}")
+                raise
             
             # Wait for images to load
-            await asyncio.sleep(2)
+            logger.info(f"⏳ Waiting for images to render...")
+            await asyncio.sleep(3)
+            
+            # Check page title to verify we're on the right page
+            title = await page.title()
+            logger.info(f"📄 Page title: {title}")
             
             # Extract image URLs using multiple strategies
+            logger.info(f"🔎 Strategy 1: Extracting via data-testid...")
             image_urls = await _extract_image_urls(page, listing_url)
             
             if not image_urls:
-                logger.warning(f"⚠️  No images found, attempting fallback extraction...")
+                logger.warning(f"⚠️  Strategy 1 failed, attempting fallback extraction...")
+                logger.info(f"🔎 Strategy 2: Regex-based extraction...")
                 image_urls = await _extract_image_urls_fallback(page)
             
-            logger.info(f"✅ Extracted {len(image_urls)} image URLs")
+            if image_urls:
+                logger.info(f"✅ Extracted {len(image_urls)} image URLs")
+            else:
+                logger.error(f"❌ No image URLs found after all strategies")
+                logger.info(f"   Page URL: {page.url}")
+                logger.info(f"   Page title: {title}")
+            
             return image_urls
         
+        except Exception as e:
+            logger.error(f"❌ Scraper fatal error: {e}")
+            logger.error(f"   Error type: {type(e).__name__}")
+            logger.error(f"   URL: {listing_url}")
+            raise
+        
         finally:
-            await context.close()
-            await browser.close()
+            try:
+                await context.close()
+                await browser.close()
+                logger.info(f"✅ Browser closed cleanly")
+            except Exception as close_error:
+                logger.warning(f"⚠️  Browser close error: {close_error}")
 
 
 async def _extract_image_urls(page, listing_url: str) -> List[str]:
@@ -149,6 +179,24 @@ async def _extract_image_urls(page, listing_url: str) -> List[str]:
         
         if images:
             logger.info(f"   Found {len(images)} images via img tags")
+            return _clean_image_urls(images)
+        
+        # Strategy 4: Catch-all - all img tags on page (last resort)
+        logger.info("📸 Extracting via catch-all img strategy...")
+        images = await page.evaluate("""
+            () => {
+                const urls = [];
+                document.querySelectorAll('img').forEach(img => {
+                    if (img.src && (img.src.includes('airbnbnb') || img.src.includes('amazonaws') || img.src.includes('cloudinary'))) {
+                        urls.push(img.src);
+                    }
+                });
+                return urls;
+            }
+        """)
+        
+        if images:
+            logger.info(f"   Found {len(images)} images via catch-all")
             return _clean_image_urls(images)
         
         logger.warning("⚠️  No images found via standard strategies")
