@@ -52,16 +52,36 @@ async def extract_airbnb_photos(listing_url: str) -> List[str]:
     
     try:
         async with async_playwright() as p:
-            # Launch browser with anti-detection arguments
+            # Launch browser with memory optimization + anti-detection arguments
+            print(f"[SCRAPER] 🚀 Launching Chromium with memory optimization...")
             browser = await p.chromium.launch(
                 headless=True,
                 args=[
+                    # Anti-detection
                     "--disable-blink-features=AutomationControlled",
-                    "--disable-dev-shm-usage",
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox"
+                    
+                    # Memory optimization
+                    "--disable-dev-shm-usage",  # Use disk instead of /dev/shm (shared memory)
+                    "--no-sandbox",  # Disable sandbox (reduces memory overhead)
+                    "--disable-setuid-sandbox",
+                    "--disable-gpu",  # Disable GPU acceleration (save VRAM)
+                    "--disable-extensions",  # No extensions = less memory
+                    "--disable-plugins",
+                    "--disable-default-apps",
+                    "--disable-preconnect",  # Don't preconnect to resources
+                    "--disable-background-networking",  # No background tasks
+                    "--disable-breakpad",  # Disable crash reporter
+                    "--disable-client-side-phishing-detection",
+                    "--disable-component-extensions-with-background-pages",
+                    "--disable-sync",  # No sync service
+                    "--metrics-recording-only",  # Minimal metrics
+                    "--mute-audio",  # No audio = less resource usage
+                    
+                    # Single process mode (experimental, may help memory)
+                    "--single-process",
                 ]
             )
+            print(f"[SCRAPER] ✅ Chromium launched with {len(browser._args)} optimization flags")
             
             context = await browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -86,16 +106,28 @@ async def extract_airbnb_photos(listing_url: str) -> List[str]:
                 print(f"[SCRAPER] 🔍 Navigating to: {listing_url}")
                 
                 try:
-                    # Try with longer timeout (60s) for international domains
-                    print(f"[SCRAPER] ⏳ Starting page load (60s timeout)...")
-                    await page.goto(listing_url, wait_until="networkidle", timeout=60000)
+                    # Try with extended timeout (90s) for slow networks + international domains
+                    # TargetClosedError often means browser process died - we'll retry
+                    print(f"[SCRAPER] ⏳ Starting page load (90s timeout)...")
+                    await page.goto(listing_url, wait_until="networkidle", timeout=90000)
                     print(f"[SCRAPER] ✅ Page loaded, networkidle reached")
                     logger.info(f"✅ Page loaded successfully")
                 except Exception as nav_error:
-                    print(f"[SCRAPER] ❌ Page load failed: {type(nav_error).__name__}: {nav_error}")
-                    logger.error(f"❌ Page navigation failed: {nav_error}")
+                    error_type = type(nav_error).__name__
+                    print(f"[SCRAPER] ❌ Page load failed: {error_type}: {nav_error}")
+                    
+                    if "TargetClosedError" in error_type:
+                        print(f"[SCRAPER] 💥 Browser process crashed/closed - will try fallback to uploaded photos")
+                        logger.error(f"❌ TargetClosedError: Browser crashed during navigation")
+                    elif "TimeoutError" in error_type:
+                        print(f"[SCRAPER] ⏰ Page load timeout - network may be slow")
+                        logger.error(f"❌ Page navigation timeout")
+                    else:
+                        print(f"[SCRAPER] 🚨 {error_type}: {nav_error}")
+                        logger.error(f"❌ Page navigation error: {nav_error}")
+                    
                     logger.info(f"   URL: {listing_url}")
-                    logger.info(f"   Error type: {type(nav_error).__name__}")
+                    logger.info(f"   Error type: {error_type}")
                     raise
                 
                 # Wait for React to fully render images (international domains can be slower)
@@ -149,13 +181,27 @@ async def extract_airbnb_photos(listing_url: str) -> List[str]:
                 raise
             
             finally:
+                # Close browser/context with resilience to already-closed state
                 try:
-                    await context.close()
-                    await browser.close()
-                    logger.info(f"✅ Browser closed cleanly")
+                    print(f"[SCRAPER] 🧹 Cleaning up browser resources...")
+                    try:
+                        await context.close()
+                        print(f"[SCRAPER]    ✓ Context closed")
+                    except Exception as ctx_error:
+                        if "Target was closed" not in str(ctx_error):
+                            print(f"[SCRAPER]    ⚠️  Context close: {type(ctx_error).__name__}")
+                    
+                    try:
+                        await browser.close()
+                        print(f"[SCRAPER]    ✓ Browser closed")
+                    except Exception as brw_error:
+                        if "Target was closed" not in str(brw_error):
+                            print(f"[SCRAPER]    ⚠️  Browser close: {type(brw_error).__name__}")
+                    
+                    logger.info(f"✅ Browser resources cleaned up")
                 except Exception as close_error:
-                    print(f"[SCRAPER] ⚠️  Browser close error: {type(close_error).__name__}: {close_error}")
-                    logger.warning(f"⚠️  Browser close error: {close_error}")
+                    print(f"[SCRAPER] ⚠️  Final cleanup error: {type(close_error).__name__}: {close_error}")
+                    logger.warning(f"⚠️  Cleanup error: {close_error}")
     
     except (ModuleNotFoundError, ImportError) as import_err:
         print(f"[SCRAPER] ❌ IMPORT ERROR (dependency missing)")

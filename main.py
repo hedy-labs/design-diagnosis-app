@@ -899,37 +899,52 @@ async def generate_and_send_report(submission_id: int, report_type: str):
         
         vision_results = None
         
-        # Try to retrieve from cache FIRST (form submission path)
+        # Try to retrieve from cache FIRST (form submission path with scraped photos)
         if hasattr(app, '_vision_cache') and submission_id in app._vision_cache:
             vision_results = app._vision_cache[submission_id]
-            print(f"[REPORT] 💾 Vision results from cache (form submission path)")
+            print(f"[REPORT] 💾 Vision results from cache (pre-analyzed photos)")
             logger.info(f"💾 Retrieved cached vision results for submission {submission_id}")
             del app._vision_cache[submission_id]
         
         # If not cached, must extract photos and run Vision AI (payment success path)
         if not vision_results:
-            print(f"[REPORT] 🔍 No cached vision results - running Vision AI pipeline...")
+            print(f"[REPORT] 🔍 No cached vision results - extracting photos...")
             
             from photo_scraper import extract_airbnb_photos
             from vision_analyzer_v2 import VisionAnalyzerV2
             from vision_to_vitality import map_vision_to_design_score, get_design_narrative
             
             image_urls = []
+            scraper_attempted = False
             
-            # Determine photo source
+            # STRATEGY 1: Try Airbnb URL scraper
             if submission.airbnb_url:
-                print(f"[REPORT]    📍 Photo source: Airbnb URL scraper")
+                print(f"[REPORT]    📍 Strategy 1: Airbnb URL scraper")
+                scraper_attempted = True
                 try:
                     image_urls = await extract_airbnb_photos(submission.airbnb_url)
-                    print(f"[REPORT]    ✅ Extracted {len(image_urls)} images from URL")
-                    logger.info(f"✅ Extracted {len(image_urls)} photos from Airbnb URL")
+                    if image_urls:
+                        print(f"[REPORT]    ✅ Extracted {len(image_urls)} images from URL")
+                        logger.info(f"✅ Extracted {len(image_urls)} photos from Airbnb URL")
+                    else:
+                        print(f"[REPORT] ⚠️  Scraper returned empty list")
+                        image_urls = []
                 except Exception as scrape_error:
-                    print(f"[REPORT] ⚠️  Scraper failed: {type(scrape_error).__name__}: {scrape_error}")
-                    logger.warning(f"⚠️  Scraper failed: {scrape_error}")
+                    error_name = type(scrape_error).__name__
+                    print(f"[REPORT] ⚠️  Scraper failed: {error_name}: {scrape_error}")
+                    logger.warning(f"⚠️  Scraper failed ({error_name}): {scrape_error}")
                     image_urls = []
-            else:
-                print(f"[REPORT]    📁 Photo source: Uploaded files (TODO: load from storage)")
-                logger.warning(f"⚠️  No Airbnb URL - would need uploaded photo loading")
+            
+            # STRATEGY 2: Check for manually uploaded photos (fallback)
+            if not image_urls and scraper_attempted:
+                print(f"[REPORT]    📁 Strategy 2: Checking for uploaded photos (fallback)...")
+                print(f"[REPORT] 💡 Future: Load from uploaded_photos table if available")
+                logger.info(f"ℹ️  Scraper failed but uploaded photos storage not yet implemented")
+                print(f"[REPORT]    ⏳ Uploaded photo fallback: TBD in Phase 2")
+                image_urls = []
+            elif not submission.airbnb_url:
+                print(f"[REPORT]    📁 No Airbnb URL - would check for uploaded files")
+                logger.warning(f"⚠️  No Airbnb URL provided - uploaded photo loading needed")
             
             if image_urls:
                 print(f"[REPORT] 🤖 STEP 1B: Running Vision AI on {len(image_urls)} images...")
