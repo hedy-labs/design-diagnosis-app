@@ -761,7 +761,12 @@
             event.preventDefault();
             
             const submitBtn = document.getElementById('submitBtn');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            
             submitBtn.disabled = true;
+            nextBtn.disabled = true;
+            if (prevBtn) prevBtn.disabled = true;
             
             try {
                 // Collect form data
@@ -784,7 +789,9 @@
                     total_photos: document.querySelector('select[name="total_photos"]').value,
                     guest_comfort_checklist: Array.from(document.querySelectorAll('input[name="comfort"]:checked')).map(cb => cb.value),
                     report_type: report_type,
-                    wants_marketing_emails: document.querySelector('input[name="wants_marketing_emails"]').checked
+                    wants_marketing_emails: document.querySelector('input[name="wants_marketing_emails"]').checked,
+                    // Include uploaded vision results if they exist
+                    vision_results: window._uploadedVisionResults || null
                 };
                 
                 // MANDATORY: Scrape photos and analyze with Vision AI
@@ -810,8 +817,13 @@
                             showMessage('✅ Property analysis complete. Submitting form...', 'loading');
                         } else {
                             // Vision analysis failed - show fallback
+                            console.log('Vision analysis failed, showing fallback UI');
                             showMessage('⚠️  Could not automatically fetch photos. Please upload them manually.', 'error');
                             document.getElementById('photoFallback').style.display = 'block';
+                            // HIDE submit button when fallback is shown
+                            submitBtn.style.display = 'none';
+                            nextBtn.style.display = 'none';
+                            if (prevBtn) prevBtn.style.display = 'none';
                             submitBtn.disabled = false;
                             return;
                         }
@@ -824,9 +836,13 @@
                     }
                 } catch (e) {
                     // Vision scraper error - show fallback
-                    console.warn('Vision analysis failed, showing manual upload:', e);
+                    console.warn('Vision analysis error (catch block):', e);
                     showMessage('⚠️  Could not automatically fetch photos. Please upload them manually.', 'error');
                     document.getElementById('photoFallback').style.display = 'block';
+                    // HIDE submit button when fallback is shown
+                    submitBtn.style.display = 'none';
+                    nextBtn.style.display = 'none';
+                    if (prevBtn) prevBtn.style.display = 'none';
                     submitBtn.disabled = false;
                     return;
                 }
@@ -974,10 +990,14 @@
         }
         
         async function analyzeUploadedPhotos() {
+            console.log('analyzeUploadedPhotos() called');
+            
             if (uploadedFiles.length === 0) {
                 alert('Please select at least 1 photo before analyzing.');
                 return;
             }
+            
+            console.log(`Selected ${uploadedFiles.length} files for analysis`);
             
             if (uploadedFiles.length < 3) {
                 const proceed = confirm(`You've selected ${uploadedFiles.length} photo(s). We recommend at least 3. Continue with analysis?`);
@@ -989,41 +1009,63 @@
             analyzeBtn.style.opacity = '0.5';
             
             showMessage('🔄 Analyzing uploaded photos. This may take 10-15 seconds...', 'loading');
+            console.log('Showing loading message, starting upload...');
             
             try {
                 // Create FormData for file upload
+                console.log('Creating FormData...');
                 const formData = new FormData();
                 uploadedFiles.forEach((file, idx) => {
+                    console.log(`  Adding file ${idx + 1}: ${file.name} (${file.size} bytes)`);
                     formData.append('photos', file);
                 });
+                console.log(`FormData created with ${uploadedFiles.length} files`);
                 
                 // Send to backend for vision analysis
+                console.log('Sending POST /api/analyze-uploaded-photos...');
                 const response = await fetch('/api/analyze-uploaded-photos', {
                     method: 'POST',
                     body: formData
                 });
                 
+                console.log(`Response status: ${response.status}`);
+                
                 if (!response.ok) {
-                    throw new Error('Analysis failed. Please try again.');
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
                 const result = await response.json();
+                console.log('Response JSON:', result);
                 
                 if (result.success && result.vision_results) {
-                    // Store vision results in form data
-                    const formElement = document.getElementById('designForm');
+                    console.log('✅ Analysis successful, storing vision results...');
+                    // Store vision results for form submission
                     window._uploadedVisionResults = result.vision_results;
+                    console.log('Vision results stored:', result.vision_results);
                     
-                    showMessage('✅ Photo analysis complete! Your form is ready to submit.', 'success');
+                    showMessage('✅ Photo analysis complete! Proceeding to final step...', 'success');
+                    console.log('Hiding fallback, showing step 3...');
                     document.getElementById('photoFallback').style.display = 'none';
                     
-                    // Proceed to next step or allow form submission
-                    showStep(3);  // Go to final step
+                    // Reset uploaded files and preview
+                    uploadedFiles = [];
+                    document.getElementById('uploadedPhotosPreview').style.display = 'none';
+                    document.getElementById('manualPhotoUpload').value = '';
+                    
+                    // Show form buttons again and go to step 3
+                    document.getElementById('submitBtn').style.display = 'inline-block';
+                    document.getElementById('nextBtn').style.display = 'inline-block';
+                    document.getElementById('prevBtn').style.display = 'inline-block';
+                    
+                    // Proceed to step 3 (email/payment)
+                    showStep(3);
+                    console.log('Ready for form submission');
                 } else {
-                    throw new Error(result.error || 'Analysis returned no results.');
+                    throw new Error(result.error || 'Analysis returned no vision results.');
                 }
             } catch (error) {
-                console.error('Photo analysis error:', error);
+                console.error('❌ Photo analysis error:', error);
+                console.error('Error stack:', error.stack);
                 showMessage(`❌ Analysis failed: ${error.message}`, 'error');
                 analyzeBtn.disabled = false;
                 analyzeBtn.style.opacity = '1';
@@ -1031,13 +1073,23 @@
         }
         
         function goBackToEditUrl() {
+            console.log('goBackToEditUrl() called');
             document.getElementById('photoFallback').style.display = 'none';
             uploadedFiles = [];
             document.getElementById('uploadedPhotosPreview').style.display = 'none';
             document.getElementById('manualPhotoUpload').value = '';
+            
+            // Show form buttons again
+            document.getElementById('submitBtn').style.display = 'inline-block';
+            document.getElementById('nextBtn').style.display = 'inline-block';
+            document.getElementById('prevBtn').style.display = 'inline-block';
+            
             showStep(1);
             showMessage('', '');
             document.getElementById('submitBtn').disabled = false;
+            document.getElementById('nextBtn').disabled = false;
+            if (document.getElementById('prevBtn')) document.getElementById('prevBtn').disabled = false;
+            console.log('Returned to step 1');
         }
         
         // Auto-clear error messages when user corrects input

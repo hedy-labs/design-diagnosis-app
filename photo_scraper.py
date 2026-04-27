@@ -61,25 +61,36 @@ async def extract_airbnb_photos(listing_url: str) -> List[str]:
         try:
             # Navigate to listing
             logger.info(f"📄 Loading listing page: {listing_url}")
+            print(f"[SCRAPER] 🔍 Navigating to: {listing_url}")
+            
             try:
-                await page.goto(listing_url, wait_until="networkidle", timeout=30000)
+                # Try with longer timeout (60s) for international domains
+                print(f"[SCRAPER] ⏳ Starting page load (60s timeout)...")
+                await page.goto(listing_url, wait_until="networkidle", timeout=60000)
+                print(f"[SCRAPER] ✅ Page loaded, networkidle reached")
                 logger.info(f"✅ Page loaded successfully")
             except Exception as nav_error:
+                print(f"[SCRAPER] ❌ Page load failed: {type(nav_error).__name__}: {nav_error}")
                 logger.error(f"❌ Page navigation failed: {nav_error}")
                 logger.info(f"   URL: {listing_url}")
                 logger.info(f"   Error type: {type(nav_error).__name__}")
                 raise
             
-            # Wait for images to load
-            logger.info(f"⏳ Waiting for images to render...")
-            await asyncio.sleep(3)
+            # Wait for React to fully render images (international domains can be slower)
+            print(f"[SCRAPER] ⏳ Waiting 5s for React image rendering...")
+            await asyncio.sleep(5)
+            print(f"[SCRAPER] ✅ React render wait complete")
+            logger.info(f"⏳ Waited for images to render")
             
             # Check page title to verify we're on the right page
             title = await page.title()
+            print(f"[SCRAPER] 📄 Page title: {title}")
             logger.info(f"📄 Page title: {title}")
             
             # Extract image URLs using multiple strategies
+            print(f"[SCRAPER] 🔎 Starting image extraction (4 strategies)...")
             logger.info(f"🔎 Strategy 1: Extracting via data-testid...")
+            print(f"[SCRAPER] 📸 Strategy 1: data-testid extraction...")
             image_urls = await _extract_image_urls(page, listing_url)
             
             if not image_urls:
@@ -88,8 +99,12 @@ async def extract_airbnb_photos(listing_url: str) -> List[str]:
                 image_urls = await _extract_image_urls_fallback(page)
             
             if image_urls:
+                print(f"[SCRAPER] ✅ SUCCESS: Extracted {len(image_urls)} image URLs")
                 logger.info(f"✅ Extracted {len(image_urls)} image URLs")
             else:
+                print(f"[SCRAPER] ❌ FAILURE: No image URLs found after all 4 strategies")
+                print(f"[SCRAPER] 📄 Final page URL: {page.url}")
+                print(f"[SCRAPER] 📄 Final page title: {title}")
                 logger.error(f"❌ No image URLs found after all strategies")
                 logger.info(f"   Page URL: {page.url}")
                 logger.info(f"   Page title: {title}")
@@ -123,25 +138,33 @@ async def _extract_image_urls(page, listing_url: str) -> List[str]:
     
     try:
         # Strategy 1: Airbnb-specific data-testid
+        print(f"[SCRAPER] 📸 [Strategy 1] data-testid extraction...")
         logger.info("📸 Extracting via data-testid strategy...")
-        images = await page.evaluate("""
-            () => {
-                const urls = [];
-                // Look for images in carousels and photo grids
-                document.querySelectorAll('[data-testid*="photo"], [role="img"]').forEach(el => {
-                    if (el.src) urls.push(el.src);
-                    else if (el.style.backgroundImage) {
-                        const match = el.style.backgroundImage.match(/url\\("([^"]+)"\\)/);
-                        if (match) urls.push(match[1]);
-                    }
-                });
-                return urls;
-            }
-        """)
+        try:
+            images = await page.evaluate("""
+                () => {
+                    const urls = [];
+                    // Look for images in carousels and photo grids
+                    document.querySelectorAll('[data-testid*="photo"], [role="img"]').forEach(el => {
+                        if (el.src) urls.push(el.src);
+                        else if (el.style.backgroundImage) {
+                            const match = el.style.backgroundImage.match(/url\\("([^"]+)"\\)/);
+                            if (match) urls.push(match[1]);
+                        }
+                    });
+                    return urls;
+                }
+            """)
+        except Exception as e:
+            print(f"[SCRAPER] ❌ [Strategy 1] JS evaluation failed: {e}")
+            images = []
         
         if images:
+            print(f"[SCRAPER] ✅ [Strategy 1] Found {len(images)} images")
             logger.info(f"   Found {len(images)} images via data-testid")
             return _clean_image_urls(images)
+        else:
+            print(f"[SCRAPER] ⏭️  [Strategy 1] No images found, trying next strategy")
         
         # Strategy 2: Picture/source srcset (responsive images)
         logger.info("📸 Extracting via picture > source strategy...")
