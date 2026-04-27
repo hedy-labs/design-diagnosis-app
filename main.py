@@ -715,30 +715,35 @@ async def generate_and_send_report(submission_id: int, report_type: str):
         with open(html_path, 'w') as f:
             f.write(result['html'])
         
-        # Generate PDF report (restored for premium reports)
-        pdf_filename = f"report_{submission_id}_{uuid.uuid4().hex[:8]}.pdf"
-        pdf_path = os.path.join(report_dir, pdf_filename)
-        
-        try:
-            pdf_success = generate_pdf_report_v2(
-                output_path=pdf_path,
-                property_name=submission.property_name,
-                vitality_data=score_data,
-                recommendations=recommendations,
-                analysis_text=result.get("analysis", ""),
-                shopping_list=result.get("shopping_list", []),
-                top_three_fixes=result.get("top_three_fixes", []),
-                report_type=report_type
-            )
+        # Generate PDF report ONLY for premium (FREE reports have no PDF attachment)
+        pdf_path = None
+        if report_type == "premium":
+            pdf_filename = f"report_{submission_id}_{uuid.uuid4().hex[:8]}.pdf"
+            pdf_path = os.path.join(report_dir, pdf_filename)
             
-            if not pdf_success:
-                logger.warning(f"⚠️  PDF generation failed, using email-only fallback")
-                pdf_path = None
-            else:
-                logger.info(f"✅ PDF report generated: {pdf_filename}")
-        except Exception as e:
-            logger.error(f"❌ PDF generation error: {e}")
-            pdf_path = None
+            try:
+                pdf_success = generate_pdf_report_v2(
+                    output_path=pdf_path,
+                    property_name=submission.property_name,
+                    vitality_data=score_data,
+                    recommendations=recommendations,
+                    analysis_text=result.get("analysis", ""),
+                    shopping_list=result.get("shopping_list", []),
+                    top_three_fixes=result.get("top_three_fixes", []),
+                    report_type=report_type
+                )
+                
+                if not pdf_success:
+                    # Hard fail: Do not fall back to email-only. This is a critical error.
+                    logger.error(f"❌ CRITICAL: PDF generation FAILED for premium report. Hard stop.")
+                    raise Exception("PDF generation failed - Weasyprint engine error. Contact support.")
+                else:
+                    logger.info(f"✅ Premium PDF report generated: {pdf_filename}")
+            except Exception as e:
+                logger.error(f"❌ CRITICAL PDF generation error: {e}")
+                raise
+        else:
+            logger.info(f"📧 Free report: No PDF attachment (email only)")
         
         # Store report record
         report = db.create_report(

@@ -186,12 +186,15 @@ class EmailService:
             logger.info(f"   → Property: {property_name}")
             logger.info(f"   → Score: {vitality_score}/100 (Grade {grade})")
             
-            # Ensure pdf_path is absolute and in the reports directory
-            if not os.path.isabs(pdf_path):
+            # Ensure pdf_path is absolute and in the reports directory (if provided)
+            if pdf_path and not os.path.isabs(pdf_path):
                 reports_dir = os.getenv("REPORT_OUTPUT_DIR", "./reports")
                 pdf_path = os.path.join(reports_dir, os.path.basename(pdf_path))
             
-            logger.info(f"📎 PDF attachment: {pdf_path}")
+            if pdf_path:
+                logger.info(f"📎 PDF attachment: {pdf_path}")
+            else:
+                logger.info(f"📧 No PDF attachment (email only)")
             
             # Build HTML email with dynamic content
             if shopping_list is None:

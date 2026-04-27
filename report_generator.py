@@ -8,6 +8,7 @@ based on Rachel's 92-point framework.
 import logging
 from typing import Dict, List, Optional
 from datetime import datetime
+from data_cleaner import clean_item_name
 
 logger = logging.getLogger(__name__)
 
@@ -313,30 +314,33 @@ class ReportBuilder:
         # Tier 1 (Critical)
         tier1_missing = [item for item in missing_items if item in VitalityScorer.TIER_1_ITEMS]
         if tier1_missing:
+            clean_names = ', '.join([clean_item_name(item) for item in tier1_missing])
             recommendations.append({
                 'priority': 'Critical',
                 'title': 'Essential Guest Comfort Items Missing',
-                'description': f"Add: {', '.join(tier1_missing)}. These directly impact guest satisfaction.",
+                'description': f"Add: {clean_names}. These directly impact guest satisfaction.",
                 'impact': 'High'
             })
         
         # Tier 2 (High Impact)
         tier2_missing = [item for item in missing_items if item in VitalityScorer.TIER_2_ITEMS]
         if tier2_missing:
+            clean_names = ', '.join([clean_item_name(item) for item in tier2_missing])
             recommendations.append({
                 'priority': 'High',
                 'title': 'Important Conveniences Missing',
-                'description': f"Add: {', '.join(tier2_missing)}. These improve guest experience.",
+                'description': f"Add: {clean_names}. These improve guest experience.",
                 'impact': 'Medium'
             })
         
         # Tier 3 (Nice to Have)
         tier3_missing = [item for item in missing_items if item in VitalityScorer.TIER_3_ITEMS]
         if tier3_missing:
+            clean_names = ', '.join([clean_item_name(item) for item in tier3_missing])
             recommendations.append({
                 'priority': 'Nice to Have',
                 'title': 'Polish & Details',
-                'description': f"Consider adding: {', '.join(tier3_missing)}. These elevate the property.",
+                'description': f"Consider adding: {clean_names}. These elevate the property.",
                 'impact': 'Low'
             })
         
