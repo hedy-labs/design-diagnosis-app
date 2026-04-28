@@ -1322,19 +1322,40 @@ async def generate_and_send_report(submission_id: int, report_type: str):
                 if pdf_path:
                     print(f"[REPORT]    PDF: {os.path.basename(pdf_path)}")
                 
-                email_service.send_report_email(
-                    email=submission.email,
-                    property_name=submission.property_name,
-                    pdf_path=pdf_path,
-                    vitality_score=score_data['vitality_score'],
-                    grade=score_data['grade'],
-                    report_type=report_type,
-                    analysis_text=result.get("analysis", ""),
-                    shopping_list=result.get("shopping_list", []),
-                    top_three_fixes=result.get("top_three_fixes", [])
-                )
-                print(f"[REPORT]    ✅ Email sent")
-                logger.info(f"✅ Report email sent to {submission.email}")
+                # PHASE 4: FREE TIER — Instant hook email (no PDF)
+                if report_type == "free":
+                    print(f"[REPORT] 🎣 PHASE 4: FREE TIER - Sending Vitality Email (Instant Hook)")
+                    # Extract top 3 fixes from Vision AI results or report generator
+                    top_fixes = vision_results.get('top_3_fixes', []) if vision_results else []
+                    if not top_fixes:
+                        # Fallback to report generator results
+                        top_fixes = result.get('top_three_fixes', [])
+                    
+                    email_service.send_free_vitality_report(
+                        email=submission.email,
+                        vitality_score=score_data['vitality_score'],
+                        grade=score_data['grade'],
+                        top_fixes=top_fixes,
+                        property_name=submission.property_name
+                    )
+                    print(f"[REPORT]    ✅ FREE vitality email sent (instant hook, {len(top_fixes)} fixes)")
+                    logger.info(f"✅ FREE vitality report sent to {submission.email}")
+                else:
+                    # Premium: Full report with PDF
+                    print(f"[REPORT] 💎 PREMIUM TIER - Sending Full Report with PDF")
+                    email_service.send_report_email(
+                        email=submission.email,
+                        property_name=submission.property_name,
+                        pdf_path=pdf_path,
+                        vitality_score=score_data['vitality_score'],
+                        grade=score_data['grade'],
+                        report_type=report_type,
+                        analysis_text=result.get("analysis", ""),
+                        shopping_list=result.get("shopping_list", []),
+                        top_three_fixes=result.get("top_three_fixes", [])
+                    )
+                    print(f"[REPORT]    ✅ PREMIUM email sent with PDF")
+                    logger.info(f"✅ Premium report email sent to {submission.email}")
             except Exception as e:
                 print(f"[REPORT]    ❌ Email failed: {type(e).__name__}: {e}")
                 logger.error(f"⚠️  Report email error: {e}")

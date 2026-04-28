@@ -13,80 +13,91 @@ logger = logging.getLogger(__name__)
 
 def map_vision_to_design_score(vision_results: Dict) -> Dict:
     """
-    Convert Vision AI analysis to design_score for vitality calculation.
+    Convert PHASE 3 Vision AI analysis to design dimensions (0-20 scale each).
     
-    Weighting (per Rachel):
-    - Staging Integrity: 40% (most critical for guest perception)
-    - Functionality: 30% (guest needs)
-    - Color Harmony: 15% (professional look)
-    - Lighting Quality: 10% (atmosphere)
-    - Clutter Density: 5% (detail polish)
+    PHASE 3: Claude returns design_scorecard with 0-6 scale per dimension.
+    This function converts 0-6 → 0-20 scale for use in 150-point system.
+    
+    FORMULA: (Claude Score / 6) × 20 = Dimension Score (0-20)
+    Example: Claude 5/6 = (5/6) × 20 = 16.67/20
+    Perfect Claude score (30/30) = 100/150 points (before Photo and Friction added)
     
     Args:
         vision_results: {
-            'lighting_quality': 0-20,
-            'color_harmony': 0-20,
-            'clutter_density': 0-20,
-            'staging_integrity': 0-20,
-            'functionality': 0-20,
-            ...
+            'design_scorecard': {
+                'lighting_quality': 0-6,
+                'color_harmony': 0-6,
+                'clutter_density': 0-6,
+                'staging_integrity': 0-6,
+                'functionality': 0-6,
+                'total_design_score': 0-30
+            },
+            'honest_marketing_status': 'High Trust|Medium Trust|Low Trust',
+            'top_3_fixes': [...],
+            'room_by_room_diagnosis': [...]
         }
     
     Returns:
         {
-            'design_score': 0-30,
-            'lighting': 0-20,
-            'colors': 0-20,
-            'clutter': 0-20,
-            'staging': 0-20,
-            'functionality': 0-20
+            'lighting': 0-20,          (Dimension 3)
+            'colors': 0-20,            (Name for color_harmony)
+            'clutter': 0-20,           (Name for clutter_density)
+            'staging': 0-20,           (Dimension for staging_integrity)
+            'functionality': 0-20,     (Dimension for functionality)
+            'design_score': 0-100,     (Sum for reference, maps to Dimension 1: Bedroom Standards)
+            'honest_marketing_status': str,
+            'top_3_fixes': list
         }
     """
     
-    # Extract scores (0-20 scale)
-    staging = vision_results.get('staging_integrity', 10)
-    functionality = vision_results.get('functionality', 10)
-    colors = vision_results.get('color_harmony', 10)
-    lighting = vision_results.get('lighting_quality', 10)
-    clutter = vision_results.get('clutter_density', 10)
+    # Extract design_scorecard (PHASE 3)
+    scorecard = vision_results.get('design_scorecard', {})
     
-    # Validate ranges
-    staging = max(0, min(20, staging))
-    functionality = max(0, min(20, functionality))
-    colors = max(0, min(20, colors))
-    lighting = max(0, min(20, lighting))
-    clutter = max(0, min(20, clutter))
+    # Extract 0-6 scores from Claude
+    lighting_6 = scorecard.get('lighting_quality', 3)
+    colors_6 = scorecard.get('color_harmony', 3)
+    clutter_6 = scorecard.get('clutter_density', 3)
+    staging_6 = scorecard.get('staging_integrity', 3)
+    functionality_6 = scorecard.get('functionality', 3)
     
-    # Convert 0-20 scale to 0-100 percentage
-    staging_pct = (staging / 20) * 100
-    functionality_pct = (functionality / 20) * 100
-    colors_pct = (colors / 20) * 100
-    lighting_pct = (lighting / 20) * 100
-    clutter_pct = (clutter / 20) * 100
+    # Validate ranges (0-6)
+    lighting_6 = max(0, min(6, lighting_6))
+    colors_6 = max(0, min(6, colors_6))
+    clutter_6 = max(0, min(6, clutter_6))
+    staging_6 = max(0, min(6, staging_6))
+    functionality_6 = max(0, min(6, functionality_6))
     
-    # Weighted average (0-100)
-    design_pct = (
-        staging_pct * 0.40 +
-        functionality_pct * 0.30 +
-        colors_pct * 0.15 +
-        lighting_pct * 0.10 +
-        clutter_pct * 0.05
-    )
+    # PHASE 4 MATH CALIBRATION: Convert 0-6 → 0-20 scale
+    # Formula: (Score / 6) × 20
+    lighting_20 = int((lighting_6 / 6) * 20)
+    colors_20 = int((colors_6 / 6) * 20)
+    clutter_20 = int((clutter_6 / 6) * 20)
+    staging_20 = int((staging_6 / 6) * 20)
+    functionality_20 = int((functionality_6 / 6) * 20)
     
-    # Convert 0-100 to 0-30 scale (design_score for vitality)
-    design_score = int((design_pct / 100) * 30)
-    design_score = max(0, min(30, design_score))  # Clamp to 0-30
+    # Perfect Claude score (30/30) verification
+    # 6 + 6 + 6 + 6 + 6 = 30 (Claude) → 20 + 20 + 20 + 20 + 20 = 100 (before Photo + Friction)
+    perfect_score = lighting_20 + colors_20 + clutter_20 + staging_20 + functionality_20
     
-    logger.info(f"📊 Vision → Design Score: {design_pct:.1f}% = {design_score}/30")
-    logger.info(f"   Staging: {staging}/20 (40%) | Functionality: {functionality}/20 (30%) | Colors: {colors}/20 (15%) | Lighting: {lighting}/20 (10%) | Clutter: {clutter}/20 (5%)")
+    logger.info(f"📊 PHASE 4: Vision (0-6) → Dimensions (0-20)")
+    logger.info(f"   Lighting: {lighting_6}/6 → {lighting_20}/20")
+    logger.info(f"   Colors: {colors_6}/6 → {colors_20}/20")
+    logger.info(f"   Clutter: {clutter_6}/6 → {clutter_20}/20")
+    logger.info(f"   Staging: {staging_6}/6 → {staging_20}/20")
+    logger.info(f"   Functionality: {functionality_6}/6 → {functionality_20}/20")
+    logger.info(f"   Sum (before Photo+Friction): {perfect_score}/100")
+    logger.info(f"   (Perfect Claude 30/30 = 100/150 in 150-point system)")
     
     return {
-        'design_score': design_score,
-        'lighting': lighting,
-        'colors': colors,
-        'clutter': clutter,
-        'staging': staging,
-        'functionality': functionality
+        'lighting': lighting_20,
+        'colors': colors_20,
+        'clutter': clutter_20,
+        'staging': staging_20,
+        'functionality': functionality_20,
+        'design_score': perfect_score,  # Sum of 5 dimensions (0-100, before Photo+Friction)
+        'honest_marketing_status': vision_results.get('honest_marketing_status', 'Medium Trust'),
+        'top_3_fixes': vision_results.get('top_3_fixes', []),
+        'room_by_room_diagnosis': vision_results.get('room_by_room_diagnosis', [])
     }
 
 

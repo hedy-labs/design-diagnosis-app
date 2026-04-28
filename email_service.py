@@ -381,6 +381,168 @@ class EmailService:
             logger.error(f"❌ SendGrid send error: {e}")
             raise
     
+    def send_free_vitality_report(self, email: str, vitality_score: int, grade: str, top_fixes: list, property_name: str = "Your Property"):
+        """
+        PHASE 4: Send Free Tier Vitality Report Email
+        
+        Instant hook email with Vitality Score, Grade, Top 3 Fixes, and Upgrade CTA.
+        
+        Args:
+            email: Recipient email
+            vitality_score: Score 0-100
+            grade: Letter grade (A-F)
+            top_fixes: List of top 3 fixes [{'priority': 1-3, 'title': str, 'experience_logic_rationale': str}, ...]
+            property_name: Property name for personalization
+        """
+        try:
+            subject = f"🎯 Your Design Diagnosis: {vitality_score}/100 ({grade}) — {property_name}"
+            
+            # Grade color coding
+            grade_colors = {
+                'A': '#388e3c',  # Green
+                'B': '#7cb342',  # Light green
+                'C': '#fbc02d',  # Yellow
+                'D': '#f57c00',  # Orange
+                'F': '#d32f2f'   # Red
+            }
+            grade_color = grade_colors.get(grade, '#757575')
+            
+            # Build HTML email
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }}
+                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                    .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center; }}
+                    .header h1 {{ margin: 0 0 10px 0; font-size: 32px; }}
+                    .score-card {{ background: white; border: 3px solid {grade_color}; border-radius: 10px; padding: 30px; text-align: center; margin: 20px 0; }}
+                    .score-number {{ font-size: 48px; font-weight: bold; color: {grade_color}; }}
+                    .score-label {{ font-size: 18px; color: #666; margin-top: 10px; }}
+                    .grade-badge {{ display: inline-block; width: 80px; height: 80px; background: {grade_color}; color: white; border-radius: 50%; line-height: 80px; font-size: 32px; font-weight: bold; margin: 20px 0; }}
+                    .fixes-section {{ margin: 30px 0; }}
+                    .fixes-section h3 {{ color: #667eea; font-size: 20px; margin-bottom: 15px; }}
+                    .fix-item {{ background: #f5f5f5; padding: 15px; border-left: 4px solid #667eea; margin-bottom: 12px; border-radius: 4px; }}
+                    .fix-priority {{ font-weight: bold; color: #764ba2; font-size: 12px; text-transform: uppercase; }}
+                    .fix-title {{ font-size: 16px; font-weight: bold; margin: 8px 0 5px 0; }}
+                    .fix-rationale {{ font-size: 14px; color: #666; }}
+                    .cta-button {{ display: inline-block; background: #667eea; color: white; padding: 15px 40px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 16px; margin: 20px 0; }}
+                    .cta-button:hover {{ background: #764ba2; }}
+                    .footer {{ background: #f9f9f9; padding: 20px; text-align: center; font-size: 12px; color: #999; margin-top: 30px; border-radius: 0 0 10px 10px; }}
+                    .footer a {{ color: #667eea; text-decoration: none; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>🏠 Design Diagnosis</h1>
+                        <p>Your Property's Visual Quality Score</p>
+                    </div>
+                    
+                    <div class="score-card">
+                        <div class="score-number">{vitality_score}</div>
+                        <div class="score-label">Vitality Score (out of 100)</div>
+                        <div class="grade-badge">{grade}</div>
+                    </div>
+                    
+                    <div style="padding: 0 20px;">
+                        <h2 style="color: #333; margin-top: 30px;">What This Score Means</h2>
+                        <p style="font-size: 16px; color: #666;">
+                            Your listing's design quality directly impacts booking rates, guest reviews, and nightly rates. 
+                            This score reflects how guests will perceive your property from photos alone.
+                        </p>
+                        
+                        <div class="fixes-section">
+                            <h3>🔧 Top 3 Fixes to Boost Your Score</h3>
+                            {self._render_fixes_html(top_fixes)}
+                        </div>
+                        
+                        <div style="text-align: center; margin: 40px 0;">
+                            <p style="font-size: 16px; font-weight: bold; color: #333; margin-bottom: 15px;">
+                                Ready to implement these fixes?
+                            </p>
+                            <a href="{self.website_url}/premium" class="cta-button">📊 Get the Full Premium Report</a>
+                            <p style="font-size: 14px; color: #999; margin-top: 10px;">
+                                The Premium PDF includes the room-by-room diagnosis, shopping lists, and budget estimates.
+                            </p>
+                        </div>
+                        
+                        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+                        
+                        <div style="background: #f0f4ff; padding: 20px; border-radius: 6px; margin: 20px 0;">
+                            <h3 style="color: #667eea; margin-top: 0;">💡 Why Premium?</h3>
+                            <p style="margin: 0 0 10px 0;">✅ <strong>Room-by-Room Analysis</strong> — See which spaces need the most help</p>
+                            <p style="margin: 0 0 10px 0;">✅ <strong>AI-Powered Shopping Lists</strong> — Links to exact products that fix each issue</p>
+                            <p style="margin: 0 0 10px 0;">✅ <strong>Budget-Aware Recommendations</strong> — Value, Signature, and Luxury tiers</p>
+                            <p style="margin: 0;">✅ <strong>Guest Experience Blueprint</strong> — Fix priority and ROI for each improvement</p>
+                        </div>
+                    </div>
+                    
+                    <div class="footer">
+                        <p style="margin: 0 0 10px 0;">
+                            <strong>Rooms by Rachel</strong> — Interior Design for Short-Term Rentals
+                        </p>
+                        <p style="margin: 0 0 15px 0;">
+                            <a href="{self.instagram_url}">Instagram</a> · 
+                            <a href="{self.tiktok_url}">TikTok</a> · 
+                            <a href="{self.website_url}">Website</a>
+                        </p>
+                        <p style="margin: 0;">
+                            Questions? Reply to this email or contact <a href="mailto:{self.support_email}">{self.support_email}</a>
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            # Send email
+            print(f"[EMAIL] 📧 Sending FREE VITALITY REPORT to {email}")
+            print(f"[EMAIL]    Score: {vitality_score}/100, Grade: {grade}")
+            print(f"[EMAIL]    Top fixes: {len(top_fixes)} items")
+            
+            if self.mode == "LIVE":
+                message = Mail(
+                    from_email=self.from_email,
+                    to_emails=email,
+                    subject=subject,
+                    html_content=html_content
+                )
+                response = self.client.send(message)
+                logger.info(f"✅ Free vitality report sent to {email} (Status: {response.status_code})")
+            else:
+                logger.info(f"📧 [MOCK] Free vitality report to {email}")
+                logger.info(f"📧 [MOCK] Subject: {subject}")
+                logger.info(f"📧 [MOCK] Score: {vitality_score}/100, Grade: {grade}")
+        
+        except Exception as e:
+            logger.error(f"❌ Free report email error: {e}")
+            print(f"[EMAIL] ❌ Failed to send free report: {e}")
+            raise
+    
+    def _render_fixes_html(self, top_fixes: list) -> str:
+        """Render top 3 fixes as HTML"""
+        if not top_fixes:
+            return "<p style='color: #999;'>No fixes available.</p>"
+        
+        html = ""
+        for idx, fix in enumerate(top_fixes[:3], 1):
+            priority = fix.get('priority', 1)
+            title = fix.get('title', 'Fix')
+            rationale = fix.get('experience_logic_rationale', '')
+            
+            html += f"""
+            <div class="fix-item">
+                <div class="fix-priority">#{priority} — {['Low', 'Medium', 'High', 'Critical'][min(priority - 1, 3)]}</div>
+                <div class="fix-title">{title}</div>
+                <div class="fix-rationale">{rationale}</div>
+            </div>
+            """
+        
+        return html
+    
     def _send_mock(self, to_email: str, subject: str, message_type: str):
         """Mock email (log only)"""
         logger.info(f"📧 [MOCK] {message_type} email to {to_email}")
