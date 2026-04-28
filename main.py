@@ -1110,16 +1110,18 @@ async def generate_and_send_report(submission_id: int, report_type: str):
                     logger.warning(f"⚠️  No Airbnb URL and no uploaded photos available")
             
             if image_urls:
-                print(f"[REPORT] 🤖 STEP 1B: Running Vision AI on {len(image_urls)} images...")
+                print(f"[REPORT] 🤖 STEP 1B: PHASE 3 - Running holistic Vision AI on {len(image_urls)} images...")
                 try:
                     analyzer = VisionAnalyzerV2()
                     vision_results = await analyzer.analyze_images_batch(image_urls, max_images=10)
                     
-                    if vision_results and vision_results.get('lighting_quality') is not None:
-                        print(f"[REPORT]    ✅ Vision AI complete: design_quality={vision_results.get('design_quality', 'N/A')}")
-                        logger.info(f"✅ Vision AI analysis complete")
+                    if vision_results and vision_results.get('design_scorecard'):
+                        design_score = vision_results['design_scorecard'].get('total_design_score', 0)
+                        trust_status = vision_results.get('honest_marketing_status', 'Unknown')
+                        print(f"[REPORT] ✅ PHASE 3 Analysis complete: {design_score}/30, Trust: {trust_status}")
+                        logger.info(f"✅ Holistic Vision analysis complete: {design_score}/30")
                     else:
-                        print(f"[REPORT]    ❌ Vision AI returned empty results")
+                        print(f"[REPORT]    ❌ Vision AI returned invalid schema")
                         vision_results = None
                 except Exception as vision_error:
                     print(f"[REPORT] ❌ Vision AI FAILED: {type(vision_error).__name__}: {vision_error}")
