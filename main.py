@@ -1322,24 +1322,40 @@ async def generate_and_send_report(submission_id: int, report_type: str):
                 if pdf_path:
                     print(f"[REPORT]    PDF: {os.path.basename(pdf_path)}")
                 
-                # PHASE 4: FREE TIER — Instant hook email (no PDF)
+                # PHASE 4: FREE TIER — Instant hook email (REDACTED AI fixes, utility baseline fixes shown)
                 if report_type == "free":
-                    print(f"[REPORT] 🎣 PHASE 4: FREE TIER - Sending Vitality Email (Instant Hook)")
-                    # Extract top 3 fixes from Vision AI results or report generator
+                    print(f"[REPORT] 🎣 PHASE 4: FREE TIER - Sending Vitality Email (Redacted + Utility Fixes)")
+                    
+                    # Identify unchecked comfort items to show as "Essential Baseline Fixes"
+                    unchecked_items = []
+                    if submission.guest_comfort_checklist:
+                        # All comfort items from form
+                        all_comfort_items = [
+                            'powerBars', 'bedLamps', 'hangers', 'plunger', 
+                            'glasses', 'plates', 'dryingRack', 'paperTowels', 
+                            'coasters', 'shoeRack', 'mirror', 'bathMats'
+                        ]
+                        # Find which ones are NOT checked
+                        checked = submission.guest_comfort_checklist
+                        unchecked_items = [item for item in all_comfort_items if item not in checked]
+                    
+                    print(f"[REPORT]    Unchecked items: {unchecked_items[:3]}")
+                    
+                    # REVENUE PROTECTION: Send redacted email
+                    # AI fixes are REDACTED, utility baseline fixes are shown
                     top_fixes = vision_results.get('top_3_fixes', []) if vision_results else []
-                    if not top_fixes:
-                        # Fallback to report generator results
-                        top_fixes = result.get('top_three_fixes', [])
                     
                     email_service.send_free_vitality_report(
                         email=submission.email,
                         vitality_score=score_data['vitality_score'],
                         grade=score_data['grade'],
-                        top_fixes=top_fixes,
-                        property_name=submission.property_name
+                        top_fixes=top_fixes,  # REDACTED in template
+                        property_name=submission.property_name,
+                        submission_id=submission_id,  # For Stripe checkout link
+                        unchecked_items=unchecked_items  # Show as baseline fixes
                     )
-                    print(f"[REPORT]    ✅ FREE vitality email sent (instant hook, {len(top_fixes)} fixes)")
-                    logger.info(f"✅ FREE vitality report sent to {submission.email}")
+                    print(f"[REPORT]    ✅ FREE vitality email sent (AI fixes REDACTED, baseline fixes shown)")
+                    logger.info(f"✅ FREE vitality report sent to {submission.email} (redacted)")
                 else:
                     # Premium: Full report with PDF
                     print(f"[REPORT] 💎 PREMIUM TIER - Sending Full Report with PDF")

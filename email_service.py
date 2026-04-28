@@ -381,18 +381,23 @@ class EmailService:
             logger.error(f"❌ SendGrid send error: {e}")
             raise
     
-    def send_free_vitality_report(self, email: str, vitality_score: int, grade: str, top_fixes: list, property_name: str = "Your Property"):
+    def send_free_vitality_report(self, email: str, vitality_score: int, grade: str, top_fixes: list, property_name: str = "Your Property", submission_id: int = None, unchecked_items: list = None):
         """
-        PHASE 4: Send Free Tier Vitality Report Email
+        PHASE 4: Send Free Tier Vitality Report Email (REDACTED)
         
-        Instant hook email with Vitality Score, Grade, Top 3 Fixes, and Upgrade CTA.
+        Instant hook email with Vitality Score, Grade, REDACTED AI Fixes, and Upgrade CTA to Stripe.
+        
+        CRITICAL: AI Design Fixes are REDACTED to prevent revenue leakage.
+        Instead: Show 2-3 static utility fixes from unchecked checklist items.
         
         Args:
             email: Recipient email
             vitality_score: Score 0-100
             grade: Letter grade (A-F)
-            top_fixes: List of top 3 fixes [{'priority': 1-3, 'title': str, 'experience_logic_rationale': str}, ...]
+            top_fixes: List of top 3 fixes (IGNORED - redacted for free tier)
             property_name: Property name for personalization
+            submission_id: For Stripe checkout link
+            unchecked_items: List of unchecked comfort items to show as "Essential Baseline Fixes"
         """
         try:
             subject = f"🎯 Your Design Diagnosis: {vitality_score}/100 ({grade}) — {property_name}"
@@ -455,17 +460,34 @@ class EmailService:
                         </p>
                         
                         <div class="fixes-section">
-                            <h3>🔧 Top 3 Fixes to Boost Your Score</h3>
-                            {self._render_fixes_html(top_fixes)}
+                            <h3>🔧 AI-Powered Design Fixes (Redacted)</h3>
+                            <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                                Your custom design recommendations are locked behind the Premium report. 
+                                Unlock your personalized fixes below:
+                            </p>
+                            {self._render_redacted_fixes_html()}
+                        </div>
+                        
+                        <div class="fixes-section">
+                            <h3>📋 Essential Baseline Fixes (Free Preview)</h3>
+                            <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                                Start with these foundational guest experience improvements:
+                            </p>
+                            {self._render_utility_fixes_html(unchecked_items)}
                         </div>
                         
                         <div style="text-align: center; margin: 40px 0;">
                             <p style="font-size: 16px; font-weight: bold; color: #333; margin-bottom: 15px;">
-                                Ready to implement these fixes?
+                                Ready to unlock your custom design strategy?
                             </p>
-                            <a href="{self.website_url}/premium" class="cta-button">📊 Get the Full Premium Report</a>
-                            <p style="font-size: 14px; color: #999; margin-top: 10px;">
-                                The Premium PDF includes the room-by-room diagnosis, shopping lists, and budget estimates.
+                            <a href="{self._get_stripe_checkout_url(submission_id)}" class="cta-button" style="background: #d32f2f; font-size: 18px; padding: 18px 40px;">
+                                🔓 Show me my 3 custom design fixes
+                            </a>
+                            <p style="font-size: 14px; color: #666; margin-top: 15px; font-weight: bold;">
+                                Unlock the 8-page Spatial Diagnosis PDF ($39)
+                            </p>
+                            <p style="font-size: 12px; color: #999; margin-top: 5px;">
+                                Includes room-by-room analysis, AI shopping lists, and budget-aware recommendations.
                             </p>
                         </div>
                         
@@ -523,7 +545,7 @@ class EmailService:
             raise
     
     def _render_fixes_html(self, top_fixes: list) -> str:
-        """Render top 3 fixes as HTML"""
+        """Render top 3 fixes as HTML (OLD - for reference)"""
         if not top_fixes:
             return "<p style='color: #999;'>No fixes available.</p>"
         
@@ -542,6 +564,121 @@ class EmailService:
             """
         
         return html
+    
+    def _render_redacted_fixes_html(self) -> str:
+        """
+        REVENUE PROTECTION: Render 3 redacted fix placeholders
+        Prevents free users from seeing AI design fixes without paying
+        """
+        redacted_html = ""
+        for idx in range(1, 4):
+            redacted_html += f"""
+            <div style="background: #f5f5f5; padding: 15px; border-left: 4px solid #d32f2f; margin-bottom: 12px; border-radius: 4px; opacity: 0.6;">
+                <div style="font-weight: bold; color: #999; font-size: 12px; text-transform: uppercase;">Fix #{idx}</div>
+                <div style="font-size: 16px; font-weight: bold; color: #999; margin: 8px 0;">
+                    🔒 [REDACTED DESIGN FIX]
+                </div>
+                <div style="font-size: 14px; color: #999;">
+                    This personalized recommendation is locked. Upgrade to Premium to unlock.
+                </div>
+            </div>
+            """
+        return redacted_html
+    
+    def _render_utility_fixes_html(self, unchecked_items: list = None) -> str:
+        """
+        Render 2-3 static utility fixes from unchecked checklist items
+        These are basic baseline improvements, not the premium AI analysis
+        """
+        # Map unchecked items to guest experience language
+        utility_fixes_library = {
+            'powerBars': {
+                'title': 'Add Power Bars',
+                'rationale': 'Modern guests need accessible charging for phones and laptops. Missing power bars frustrate guests and risk negative reviews.'
+            },
+            'bedLamps': {
+                'title': 'Install Bedside Lamps',
+                'rationale': 'Bedside lamps are essential for guest comfort and safety. Without them, guests feel like the property lacks care and attention.'
+            },
+            'hangers': {
+                'title': 'Add Hangers to Closet',
+                'rationale': 'Hangers are a basic expectation. Their absence signals a low-budget property and creates inconvenience for guests.'
+            },
+            'plunger': {
+                'title': 'Place Plunger in Bathroom',
+                'rationale': 'A plunger is non-negotiable for guest peace of mind. Its absence can trigger 1-star reviews instantly.'
+            },
+            'glasses': {
+                'title': 'Stock Guest Glasses',
+                'rationale': 'Glasses for drinking are standard. Missing glassware makes guests feel neglected and unprofessional.'
+            },
+            'plates': {
+                'title': 'Add Dinner Plates',
+                'rationale': 'Plates are essential for dining. Without them, your kitchen feels incomplete and guest-unfriendly.'
+            },
+            'dryingRack': {
+                'title': 'Add Drying Rack',
+                'rationale': 'A drying rack shows you understand guest needs. Without it, wet laundry becomes a problem that ruins their experience.'
+            },
+            'paperTowels': {
+                'title': 'Stock Paper Towels',
+                'rationale': 'Paper towels are expected. Their absence frustrates guests and signals low maintenance standards.'
+            },
+            'coasters': {
+                'title': 'Add Coasters',
+                'rationale': 'Coasters protect your furniture and show hospitality. They are a small touch that elevates perceived quality.'
+            },
+            'shoeRack': {
+                'title': 'Install Shoe Rack',
+                'rationale': 'A shoe rack prevents clutter and shows organizational care. Without one, your entry feels chaotic.'
+            },
+            'mirror': {
+                'title': 'Add Entry Mirror',
+                'rationale': 'A mirror in the entry helps guests feel at home and check their appearance. It is a simple luxury detail.'
+            },
+            'bathMats': {
+                'title': 'Stock Bath Mats',
+                'rationale': 'Bath mats are a comfort essential. Without them, guests feel the property is bare and lacks hospitality.'
+            },
+        }
+        
+        if not unchecked_items or len(unchecked_items) == 0:
+            # Default fallback if no unchecked items provided
+            unchecked_items = ['plunger', 'bedLamps', 'hangers']
+        
+        # Take first 2-3 unchecked items
+        selected_items = unchecked_items[:3]
+        
+        utility_html = ""
+        for idx, item_key in enumerate(selected_items, 1):
+            fix_info = utility_fixes_library.get(item_key, {
+                'title': f'Missing Guest Amenity',
+                'rationale': 'Guests expect this item. Adding it will improve their experience and your ratings.'
+            })
+            
+            utility_html += f"""
+            <div style="background: #f9f9f9; padding: 15px; border-left: 4px solid #388e3c; margin-bottom: 12px; border-radius: 4px;">
+                <div style="font-weight: bold; color: #388e3c; font-size: 12px; text-transform: uppercase;">Baseline Fix #{idx}</div>
+                <div style="font-size: 16px; font-weight: bold; color: #333; margin: 8px 0;">
+                    ✅ {fix_info['title']}
+                </div>
+                <div style="font-size: 14px; color: #666;">
+                    {fix_info['rationale']}
+                </div>
+            </div>
+            """
+        
+        return utility_html
+    
+    def _get_stripe_checkout_url(self, submission_id: int = None) -> str:
+        """
+        Generate Stripe checkout URL for this submission
+        Falls back to generic premium page if submission_id not provided
+        """
+        if submission_id:
+            return f"{self.website_url}/checkout?submission_id={submission_id}"
+        else:
+            return f"{self.website_url}/premium"
     
     def _send_mock(self, to_email: str, subject: str, message_type: str):
         """Mock email (log only)"""
