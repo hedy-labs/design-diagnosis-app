@@ -23,7 +23,10 @@ class VisionAnalyzerV2:
     
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
-        # Use stable model version (20240620 is most reliable and widely available)
+        # Use most current stable Claude 3.5 Sonnet
+        # NOTE: Using exact version tag to avoid 404 errors on API calls
+        # Latest confirmed stable: claude-3-5-sonnet-20240620
+        # If 404 persists, fall back to: claude-3-5-sonnet-latest
         self.model = "claude-3-5-sonnet-20240620"
     
     async def analyze_images_batch(self, image_urls: List[str], max_images: int = 10) -> Dict:
