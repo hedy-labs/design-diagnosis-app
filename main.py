@@ -401,6 +401,67 @@ async def analyze_uploaded_photos(request: Request):
         return {"success": False, "error": str(e)}, 500
 
 
+@app.post("/api/test-scraper")
+async def test_scraper(request: Request):
+    """
+    GUARDRAIL: Test Airbnb scraper BEFORE payment redirect
+    
+    Purpose: Verify Airbnb allows photo extraction before user proceeds to Stripe
+    
+    Input: { "url": "https://www.airbnb.com/rooms/..." }
+    Output: { "success": bool, "photos": [...], "count": int, "error": str }
+    """
+    try:
+        body = await request.json()
+        airbnb_url = body.get("url")
+        
+        if not airbnb_url:
+            logger.warning("❌ Test scraper: Missing URL")
+            return JSONResponse({"success": False, "error": "Missing URL"}, status_code=400)
+        
+        logger.info(f"🔍 Test-scraper: Verifying {airbnb_url[:60]}...")
+        print(f"[SCRAPER-TEST] 🔍 Testing Airbnb scraper for guardrail")
+        
+        from photo_scraper import extract_airbnb_photos
+        
+        try:
+            photos = await extract_airbnb_photos(airbnb_url)
+            
+            if not photos or len(photos) < 3:
+                logger.warning(f"⚠️  Scraper found insufficient photos: {len(photos) if photos else 0}")
+                print(f"[SCRAPER-TEST] ❌ Insufficient photos: {len(photos) if photos else 0}")
+                return {
+                    "success": False,
+                    "photos": photos or [],
+                    "count": len(photos) if photos else 0,
+                    "error": "Airbnb blocked automated access or insufficient photos"
+                }
+            
+            logger.info(f"✅ Scraper test passed: {len(photos)} photos found")
+            print(f"[SCRAPER-TEST] ✅ Success: {len(photos)} photos found")
+            return {
+                "success": True,
+                "photos": photos,
+                "count": len(photos),
+                "error": None
+            }
+        
+        except Exception as scraper_error:
+            logger.error(f"❌ Scraper test failed: {type(scraper_error).__name__}: {scraper_error}")
+            print(f"[SCRAPER-TEST] ❌ Scraper failed: {type(scraper_error).__name__}")
+            return {
+                "success": False,
+                "photos": [],
+                "count": 0,
+                "error": str(scraper_error)
+            }
+    
+    except Exception as e:
+        logger.error(f"❌ Test-scraper endpoint error: {e}")
+        print(f"[SCRAPER-TEST] ❌ FATAL: {e}")
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+
 @app.post("/api/analyze-listing")
 async def analyze_listing(request_data: dict):
     """

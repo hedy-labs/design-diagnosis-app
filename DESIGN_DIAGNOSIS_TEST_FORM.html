@@ -434,40 +434,47 @@
             const form = document.getElementById('testForm');
             const formData = new FormData(form);
             
-            // Count hidden friction items (each worth points)
+            // DIMENSION 7: Hidden Friction (0-40 points)
+            // 12 critical items × 3.33 points each = 40 points total
             let frictionScore = 0;
             const criticalItems = ['powerBars', 'bedLamps', 'hangers', 'plunger', 'glasses', 'plates', 'dryingRack', 'paperTowels', 'coasters', 'shoeRack', 'mirror', 'bathMats'];
             
             criticalItems.forEach(item => {
                 if (formData.has(item) && formData.get(item)) {
-                    frictionScore += 1.67; // 12 items × 1.67 = 20 points
+                    frictionScore += 3.33; // 12 items × 3.33 = 40 points (PHASE 3 calibration)
                 }
             });
 
-            // Design scores (scale 1-5 to 0-20 points)
+            // DIMENSIONS 1-5: Design scores (scale 1-5 to 0-20 points each)
             const lighting = parseFloat(formData.get('lighting')) || 3;
             const flow = parseFloat(formData.get('flow')) || 3;
             const storage = parseFloat(formData.get('storage')) || 3;
             const condition = parseFloat(formData.get('condition')) || 3;
             
-            const lightingScore = (lighting / 5) * 20;
-            const flowScore = (flow / 5) * 20;
-            const storageScore = (storage / 5) * 20;
-            const conditionScore = (condition / 5) * 20;
+            const lightingScore = (lighting / 5) * 20;  // Dimension 3: Light & Brightness (0-20)
+            const flowScore = (flow / 5) * 20;          // Dimension 2: Functionality & Flow (0-20)
+            const storageScore = (storage / 5) * 20;    // Dimension 4: Storage & Organization (0-20)
+            const conditionScore = (condition / 5) * 20; // Dimension 5: Condition & Maintenance (0-20)
 
-            // Photo strategy score (estimate based on photo count)
+            // DIMENSION 6: Photo Strategy (0-10 points)
             const photoCount = parseInt(formData.get('photos')) || 20;
             let photoScore = 10;
             if (photoCount < 10) photoScore = 3;
             else if (photoCount < 15) photoScore = 6;
             else if (photoCount > 50) photoScore = 8;
 
-            // Bedroom score (estimate)
+            // DIMENSION 1: Bedroom Standards (0-20 points)
+            // Fixed: No double-counting. Only base calculation.
             let bedroomScore = 15;
-            if (!formData.has('bedLamps') || !formData.get('bedLamps')) bedroomScore -= 3;
-            if (!formData.has('hangers') || !formData.get('hangers')) bedroomScore -= 2;
+            // Bedroom standards affected by: nightstands, quality lamps, hangers, bed quality
+            // Each is already counted in frictionScore, NOT here
+            // Only adjust for fundamental bedroom quality issues
+            if (photoCount < 5) bedroomScore -= 2; // Poor photo coverage of bedroom
+            if (parseInt(formData.get('condition')) < 2) bedroomScore -= 3; // Poor condition impacts bedroom
 
-            // Calculate total
+            // TOTAL CALCULATION
+            // Dimensions: 1(bedroom) + 2(flow) + 3(lighting) + 4(storage) + 5(condition) + 6(photo) + 7(friction)
+            // Points: 20 + 20 + 20 + 20 + 20 + 10 + 40 = 150 total
             const total = bedroomScore + flowScore + lightingScore + storageScore + conditionScore + photoScore + frictionScore;
             const vitality = Math.round((total / 150) * 100);
 

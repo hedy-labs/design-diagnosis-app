@@ -951,6 +951,38 @@
                 }
                 
                 try {
+                    // GUARDRAIL: If Airbnb URL selected, verify scraper succeeds BEFORE Stripe
+                    const photo_source = document.querySelector('input[name="photo_source"]:checked');
+                    if (photo_source && photo_source.value === 'airbnb_url') {
+                        const airbnb_url = document.querySelector('input[name="airbnb_url"]').value;
+                        console.log('🔍 GUARDRAIL: Testing Airbnb scraper before payment...');
+                        showMessage('⏳ Verifying Airbnb photos access...', 'loading');
+                        
+                        try {
+                            const scraperTestResponse = await fetch('/api/test-scraper', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ url: airbnb_url })
+                            });
+                            
+                            if (!scraperTestResponse.ok) {
+                                throw new Error('Scraper verification failed');
+                            }
+                            
+                            const scraperResult = await scraperTestResponse.json();
+                            if (!scraperResult.success || !scraperResult.photos || scraperResult.photos.length < 3) {
+                                showMessage('❌ Airbnb blocked our automated tool. Please use "Manual Upload" to provide your photos.', 'error');
+                                return;
+                            }
+                            
+                            console.log(`✅ Scraper verified: ${scraperResult.photos.length} photos found`);
+                        } catch (scraperError) {
+                            console.error('❌ Scraper verification failed:', scraperError);
+                            showMessage('❌ Airbnb blocked our automated tool. Please use "Manual Upload" to provide your photos.', 'error');
+                            return;
+                        }
+                    }
+                    
                     // Create submission first
                     console.log('⏳ Creating submission for payment processing...');
                     const submitResponse = await fetch('/api/submit-form', {
