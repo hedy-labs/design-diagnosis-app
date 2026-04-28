@@ -15,6 +15,7 @@ import uuid
 import os
 from pathlib import Path
 import logging
+import shutil
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -35,25 +36,31 @@ BASE_URL = "http://147.182.247.168:8000"  # Default VPS IP
 # Override with .env if set
 DEFAULT_BASE_URL = os.getenv("BASE_URL", BASE_URL)
 DB_PATH = os.getenv("DB_PATH", "design_diagnosis.db")
-REPORT_OUTPUT_DIR = os.getenv("REPORT_OUTPUT_DIR", "./reports")
 
-# CRITICAL: Use absolute path for uploads to avoid "black hole" on VPS
-# Default: /root/design-diagnosis-app/static/uploads (or env override)
-_default_upload_dir = "/root/design-diagnosis-app/static/uploads"
-UPLOADED_PHOTOS_DIR = os.getenv("UPLOADED_PHOTOS_DIR", _default_upload_dir)
+# DYNAMIC PATHS: Relative to application directory (no hardcoded /root/)
+_app_dir = Path(__file__).parent.absolute()
+REPORT_OUTPUT_DIR = os.getenv("REPORT_OUTPUT_DIR", str(_app_dir / "reports"))
+UPLOADED_PHOTOS_DIR = os.getenv("UPLOADED_PHOTOS_DIR", str(_app_dir / "static" / "uploads"))
 
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
 AMAZON_AFFILIATE_ID = os.getenv("AMAZON_AFFILIATE_ID", "")
 
-# Ensure directories exist
-os.makedirs(REPORT_OUTPUT_DIR, exist_ok=True)
-os.makedirs(UPLOADED_PHOTOS_DIR, exist_ok=True)
+# DEFENSIVE: Create directories if they don't exist
+try:
+    os.makedirs(REPORT_OUTPUT_DIR, exist_ok=True)
+    os.makedirs(UPLOADED_PHOTOS_DIR, exist_ok=True)
+    logger.info(f"✅ Directories created/verified")
+except Exception as dir_err:
+    logger.error(f"❌ Failed to create directories: {dir_err}")
+    print(f"[CONFIG] ❌ Directory creation failed: {dir_err}")
 
 # Log configuration
+logger.info(f"📁 App directory: {_app_dir}")
 logger.info(f"📁 Report output dir: {REPORT_OUTPUT_DIR}")
 logger.info(f"📁 Uploaded photos dir: {UPLOADED_PHOTOS_DIR}")
+print(f"[CONFIG] 📁 App dir: {_app_dir}")
 print(f"[CONFIG] 📁 Report dir: {REPORT_OUTPUT_DIR}")
 print(f"[CONFIG] 📁 Upload dir: {UPLOADED_PHOTOS_DIR}")
 
@@ -313,46 +320,41 @@ async def test_mark_payment_complete(submission_id: int, test_key: str = ""):
 @app.post("/api/analyze-uploaded-photos")
 async def analyze_uploaded_photos(request: Request):
     """
-    Analyze user-uploaded photos: Real Claude Vision AI analysis
+    DECOUPLED UPLOAD ENDPOINT: Save photos only, NO Vision AI analysis
     
     Input: multipart/form-data with 'photos' files
-    Output: { "success": bool, "vision_results": {...}, "temp_photo_paths": [...] }
+    Output: { "success": bool, "submission_id": int, "file_count": int }
     
-    Note: Photos are saved to temporary 'temp_uploads' directory.
-    When form is submitted, they'll be moved to submission_{id}/ directory.
+    Photos are saved to: UPLOADED_PHOTOS_DIR/temp_uploads/
+    Vision AI analysis happens LATER during form submission.
     """
     try:
         form = await request.form()
         uploaded_files = form.getlist('photos')
         
         if not uploaded_files or len(uploaded_files) == 0:
-            logger.error("❌ No photos provided to /api/analyze-uploaded-photos")
-            return {"success": False, "error": "No photos provided"}
+            logger.error("❌ No photos provided")
+            return {"success": False, "error": "No photos provided"}, 400
         
-        logger.info(f"📸 Processing {len(uploaded_files)} uploaded photos...")
-        print(f"[UPLOAD] 📸 Analyzing {len(uploaded_files)} uploaded photos")
+        logger.info(f"📸 Saving {len(uploaded_files)} uploaded photos (NO ANALYSIS)")
+        print(f"[UPLOAD] 📸 Saving {len(uploaded_files)} photos to disk")
         
-        from vision_analyzer_v2 import VisionAnalyzerV2
-        from vision_to_vitality import map_vision_to_design_score, get_design_narrative
-        import base64
-        
-        # Save files to temporary directory for later retrieval
+        # Create temp upload directory
         temp_upload_dir = os.path.join(UPLOADED_PHOTOS_DIR, "temp_uploads")
-        os.makedirs(temp_upload_dir, exist_ok=True)
+        try:
+            os.makedirs(temp_upload_dir, exist_ok=True)
+            print(f"[UPLOAD] ✅ Temp directory ready: {temp_upload_dir}")
+        except Exception as mkdir_err:
+            logger.error(f"❌ Failed to create upload directory: {mkdir_err}")
+            print(f"[UPLOAD] ❌ Directory creation failed: {mkdir_err}")
+            return {"success": False, "error": f"Failed to create directory: {mkdir_err}"}, 500
         
-        # Convert uploaded files to base64 data URIs AND save to disk
-        image_data_uris = []
-        temp_photo_paths = []
+        # Save files to disk (NO VISION AI)
+        saved_count = 0
         
         for idx, file in enumerate(uploaded_files):
             try:
                 content = await file.read()
-                b64 = base64.b64encode(content).decode('utf-8')
-                
-                # Determine MIME type
-                mime_type = file.content_type or 'image/jpeg'
-                data_uri = f"data:{mime_type};base64,{b64}"
-                image_data_uris.append(data_uri)
                 
                 # Save to temporary directory with UUID to avoid collisions
                 file_ext = os.path.splitext(file.filename)[1] or '.jpg'
@@ -363,77 +365,40 @@ async def analyze_uploaded_photos(request: Request):
                 with open(temp_path, 'wb') as f:
                     f.write(content)
                 
-                # CRITICAL: Verify file was actually written to disk
+                # Verify file was written
                 if os.path.exists(temp_path):
                     file_size = os.path.getsize(temp_path)
-                    temp_photo_paths.append(temp_path)
-                    print(f"[UPLOAD] ✅ File {idx + 1}: {file.filename} ({len(content)} bytes, {mime_type})")
-                    print(f"[UPLOAD]    ✅ SAVED TO DISK: {temp_path}")
-                    print(f"[UPLOAD]    ✅ VERIFIED: File exists, size={file_size} bytes")
-                    logger.info(f"✅ File saved to disk: {temp_path} (size: {file_size} bytes)")
+                    saved_count += 1
+                    print(f"[UPLOAD] ✅ File {idx + 1}: {file.filename} ({file_size} bytes)")
+                    logger.info(f"✅ File saved: {temp_filename} ({file_size} bytes)")
                 else:
-                    print(f"[UPLOAD] ❌ FILE WRITE FAILED: {temp_path} does not exist after write!")
-                    logger.error(f"❌ CRITICAL: File write failed for {temp_path}")
-                    raise Exception(f"File write verification failed for {temp_filename}")
+                    logger.error(f"❌ File write verification failed: {temp_path}")
+                    print(f"[UPLOAD] ❌ File write failed: {temp_path}")
             except Exception as e:
-                print(f"[UPLOAD] ❌ File {idx + 1} read/save failed: {e}")
-                logger.warning(f"⚠️  Failed to process file {file.filename}: {e}")
+                logger.warning(f"⚠️  Failed to save file {file.filename}: {e}")
+                print(f"[UPLOAD] ⚠️  File save error: {e}")
                 continue
         
-        if not image_data_uris:
-            logger.error("❌ No valid image data URIs created")
-            return {"success": False, "error": "Could not read any uploaded photos"}
+        if saved_count == 0:
+            logger.error("❌ No files were saved")
+            return {"success": False, "error": "No files could be saved"}, 400
         
-        logger.info(f"✅ Prepared {len(image_data_uris)} photos for Vision AI analysis")
-        print(f"[UPLOAD] 🚀 Sending {len(image_data_uris)} images to Claude Vision API")
+        logger.info(f"✅ Saved {saved_count} photos to temp storage (Vision AI deferred)")
+        print(f"[UPLOAD] ✅ COMPLETE: {saved_count} photos saved, NO ANALYSIS")
         
-        # Analyze with Vision AI (real analysis, not mocked)
-        try:
-            analyzer = VisionAnalyzerV2()
-            print(f"[UPLOAD] 🤖 Starting Vision AI batch analysis...")
-            vision_results = await analyzer.analyze_images_batch(image_data_uris, max_images=10)
-            
-            if not vision_results or vision_results.get('lighting_quality') is None:
-                raise Exception("Vision analysis returned empty results")
-            
-            print(f"[UPLOAD] ✅ Vision analysis complete: design_score={vision_results.get('design_quality', 'N/A')}")
-            logger.info(f"✅ Vision analysis complete")
-            
-        except Exception as e:
-            print(f"[UPLOAD] ❌ Vision analysis failed: {e}")
-            logger.error(f"❌ Vision analysis failed: {e}")
-            return {"success": False, "error": f"Vision analysis failed: {str(e)}"}
-        
-        # Map to design score
-        print(f"[UPLOAD] 📊 Mapping vision results to design score...")
-        design_mapping = map_vision_to_design_score(vision_results)
-        design_narrative = get_design_narrative(vision_results, design_mapping)
-        
-        logger.info(f"✅ Design mapping complete: design_score={design_mapping['design_score']}/30")
-        print(f"[UPLOAD] ✅ Design mapping: score={design_mapping['design_score']}/30")
-        print(f"[UPLOAD] 💾 Saved {len(temp_photo_paths)} photos to temporary storage")
-        
+        # Return 200 OK with minimal response (NO VISION RESULTS)
         return {
             "success": True,
-            "vision_results": {
-                "lighting_quality": vision_results.get('lighting_quality', 10),
-                "color_harmony": vision_results.get('color_harmony', 10),
-                "clutter_density": vision_results.get('clutter_density', 10),
-                "staging_integrity": vision_results.get('staging_integrity', 10),
-                "functionality": vision_results.get('functionality', 10),
-                "design_score": design_mapping['design_score'],
-                "design_narrative": design_narrative,
-                "room_summaries": vision_results.get('room_summaries', {})
-            },
-            "temp_photo_paths": temp_photo_paths  # Return for later retrieval
-        }
+            "submission_id": None,  # Will be assigned when form is submitted
+            "file_count": saved_count
+        }, 200
     
     except Exception as e:
-        print(f"[UPLOAD] ❌ FATAL ERROR: {e}")
-        logger.error(f"❌ Uploaded photo analysis fatal error: {e}")
+        logger.error(f"❌ Upload endpoint error: {e}")
+        print(f"[UPLOAD] ❌ FATAL: {e}")
         import traceback
         logger.error(traceback.format_exc())
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": str(e)}, 500
 
 
 @app.post("/api/analyze-listing")
