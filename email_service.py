@@ -481,11 +481,8 @@ class EmailService:
                                 Ready to unlock your custom design strategy?
                             </p>
                             <a href="{self._get_stripe_checkout_url(submission_id)}" class="cta-button" style="background: #d32f2f; font-size: 18px; padding: 18px 40px;">
-                                🔓 Show me my 3 custom design fixes
+                                🔓 Unlock My 8-Page Spatial Diagnosis PDF ($39)
                             </a>
-                            <p style="font-size: 14px; color: #666; margin-top: 15px; font-weight: bold;">
-                                Unlock the 8-page Spatial Diagnosis PDF ($39)
-                            </p>
                             <p style="font-size: 12px; color: #999; margin-top: 5px;">
                                 Includes room-by-room analysis, AI shopping lists, and budget-aware recommendations.
                             </p>
@@ -567,23 +564,41 @@ class EmailService:
     
     def _render_redacted_fixes_html(self) -> str:
         """
-        REVENUE PROTECTION: Render 3 redacted fix placeholders
+        REVENUE PROTECTION: Render 3 HARDCODED redacted fix placeholders
         Prevents free users from seeing AI design fixes without paying
+        Each block is identical - MUST NOT loop through top_fixes or reveal content
         """
-        redacted_html = ""
-        for idx in range(1, 4):
-            redacted_html += f"""
+        return """
             <div style="background: #f5f5f5; padding: 15px; border-left: 4px solid #d32f2f; margin-bottom: 12px; border-radius: 4px; opacity: 0.6;">
-                <div style="font-weight: bold; color: #999; font-size: 12px; text-transform: uppercase;">Fix #{idx}</div>
+                <div style="font-weight: bold; color: #999; font-size: 12px; text-transform: uppercase;">AI Fix #1</div>
                 <div style="font-size: 16px; font-weight: bold; color: #999; margin: 8px 0;">
                     🔒 [REDACTED DESIGN FIX]
                 </div>
                 <div style="font-size: 14px; color: #999;">
-                    This personalized recommendation is locked. Upgrade to Premium to unlock.
+                    This personalized AI spatial diagnosis is locked. Upgrade to Premium to unlock.
                 </div>
             </div>
-            """
-        return redacted_html
+            
+            <div style="background: #f5f5f5; padding: 15px; border-left: 4px solid #d32f2f; margin-bottom: 12px; border-radius: 4px; opacity: 0.6;">
+                <div style="font-weight: bold; color: #999; font-size: 12px; text-transform: uppercase;">AI Fix #2</div>
+                <div style="font-size: 16px; font-weight: bold; color: #999; margin: 8px 0;">
+                    🔒 [REDACTED DESIGN FIX]
+                </div>
+                <div style="font-size: 14px; color: #999;">
+                    This personalized AI spatial diagnosis is locked. Upgrade to Premium to unlock.
+                </div>
+            </div>
+            
+            <div style="background: #f5f5f5; padding: 15px; border-left: 4px solid #d32f2f; margin-bottom: 12px; border-radius: 4px; opacity: 0.6;">
+                <div style="font-weight: bold; color: #999; font-size: 12px; text-transform: uppercase;">AI Fix #3</div>
+                <div style="font-size: 16px; font-weight: bold; color: #999; margin: 8px 0;">
+                    🔒 [REDACTED DESIGN FIX]
+                </div>
+                <div style="font-size: 14px; color: #999;">
+                    This personalized AI spatial diagnosis is locked. Upgrade to Premium to unlock.
+                </div>
+            </div>
+        """
     
     def _render_utility_fixes_html(self, unchecked_items: list = None) -> str:
         """
