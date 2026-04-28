@@ -379,9 +379,48 @@
                     <input type="text" name="property_name" required>
                 </div>
                 
-                <div class="form-group">
+                <!-- PHOTO SOURCE SELECTION: Airbnb Link vs Manual Upload -->
+                <div class="form-group" style="background: #f8f9fa; padding: 15px; border-radius: 6px; border: 2px solid #e9ecef;">
+                    <label style="font-weight: 600; margin-bottom: 12px;">How would you like to provide photos? <span class="required">*</span></label>
+                    
+                    <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                        <label style="display: flex; align-items: center; font-weight: normal; margin: 0; cursor: pointer;">
+                            <input type="radio" name="photo_source" value="airbnb_url" required style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;" checked>
+                            <span>📍 Paste Airbnb/VRBO Link</span>
+                        </label>
+                        
+                        <label style="display: flex; align-items: center; font-weight: normal; margin: 0; cursor: pointer;">
+                            <input type="radio" name="photo_source" value="manual_upload" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                            <span>📸 Upload Photos Manually</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- CONDITIONAL: Show URL input when "Airbnb Link" selected -->
+                <div id="airbnb_url_group" class="form-group" style="display: block;">
                     <label>Airbnb/VRBO URL <span style="color: #ef4444; font-weight: bold;">*</span></label>
-                    <input type="url" name="airbnb_url" required placeholder="Paste your Airbnb or VRBO link here...">
+                    <input type="url" name="airbnb_url" id="airbnb_url_input" placeholder="Paste your Airbnb or VRBO link here...">
+                </div>
+                
+                <!-- CONDITIONAL: Show manual upload zone when "Upload Photos" selected -->
+                <div id="manual_upload_group" class="form-group" style="display: none;">
+                    <label>Upload Property Photos <span style="color: #ef4444; font-weight: bold;">*</span> (Minimum 3 photos required)</label>
+                    
+                    <div style="border: 2px dashed #667eea; border-radius: 8px; padding: 30px; text-align: center; background: #f8f9ff; cursor: pointer;" 
+                         ondrop="handlePhotoDrop(event)" ondragover="event.preventDefault()" onclick="document.getElementById('manual_upload_input').click()">
+                        <input type="file" id="manual_upload_input" multiple accept="image/*" style="display: none;" onchange="handleManualPhotoSelect(event)">
+                        
+                        <div style="font-size: 48px; margin-bottom: 10px;">📸</div>
+                        <p style="font-weight: 600; color: #333; margin-bottom: 5px;">Drop photos here or click to browse</p>
+                        <p style="color: #666; font-size: 14px;">(JPG, PNG, WebP — up to 5 files)</p>
+                    </div>
+                    
+                    <!-- Photos preview -->
+                    <div id="manual_photos_preview" style="display: none; margin-top: 15px;">
+                        <p style="font-weight: 600; color: #333; margin-bottom: 10px;">📸 Selected Photos:</p>
+                        <div id="manual_photos_list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px;"></div>
+                        <p id="manual_photos_count" style="color: #666; font-size: 14px; margin-top: 10px;"></p>
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -702,7 +741,7 @@
             // Validate before moving forward
             if (direction > 0) {
                 if (currentStep === 1) {
-                    // Validate Step 1 - with better debugging
+                    // Validate Step 1 - with photo source handling
                     const property_name = document.querySelector('input[name="property_name"]');
                     const listing_type = document.querySelector('select[name="listing_type"]');
                     const bedrooms = document.querySelector('select[name="bedrooms"]');
@@ -710,12 +749,19 @@
                     const guest_capacity = document.querySelector('select[name="guest_capacity"]');
                     const total_photos = document.querySelector('select[name="total_photos"]');
                     const airbnb_url = document.querySelector('input[name="airbnb_url"]');
+                    const photo_source = document.querySelector('input[name="photo_source"]:checked');
                     
                     const errors = [];
                     
                     // Check text inputs
                     if (!property_name || !property_name.value.trim()) errors.push('Property Name');
-                    if (!airbnb_url || !airbnb_url.value.trim()) errors.push('Airbnb/VRBO URL');
+                    
+                    // Validate based on photo source
+                    if (photo_source && photo_source.value === 'airbnb_url') {
+                        if (!airbnb_url || !airbnb_url.value.trim()) errors.push('Airbnb/VRBO URL');
+                    } else if (photo_source && photo_source.value === 'manual_upload') {
+                        if (!manualUploadedFiles || manualUploadedFiles.length < 3) errors.push('At least 3 photos required');
+                    }
                     
                     // Check dropdowns (value="" means "Select..." not chosen)
                     if (!listing_type || listing_type.value === '') errors.push('Property Type');
@@ -729,9 +775,44 @@
                         return;
                     }
                     
-                    // Validate URL format
-                    const url_lower = airbnb_url.value.toLowerCase();
-                    if (!url_lower.includes('airbnb') && !url_lower.includes('vrbo')) {
+                    // If manual upload, save photos to server BEFORE form submission
+                    if (photo_source && photo_source.value === 'manual_upload' && manualUploadedFiles.length > 0) {
+                        console.log('📸 Uploading manual photos to server...');
+                        showMessage('⏳ Uploading photos...', 'loading');
+                        
+                        const formData = new FormData();
+                        manualUploadedFiles.forEach(file => {
+                            formData.append('photos', file);
+                        });
+                        
+                        try {
+                            const uploadResponse = await fetch('/api/analyze-uploaded-photos', {
+                                method: 'POST',
+                                body: formData
+                            });
+                            
+                            if (!uploadResponse.ok) {
+                                const error = await uploadResponse.json();
+                                throw new Error(error.error || 'Photo upload failed');
+                            }
+                            
+                            const uploadResult = await uploadResponse.json();
+                            if (uploadResult.success) {
+                                console.log('✅ Photos uploaded and analyzed');
+                                window._uploadedVisionResults = uploadResult.vision_results;
+                                window._uploadedPhotoPaths = uploadResult.temp_photo_paths;
+                            } else {
+                                throw new Error(uploadResult.error || 'Photo analysis failed');
+                            }
+                        } catch (err) {
+                            console.error('❌ Photo upload error:', err);
+                            showMessage(`❌ Photo upload failed: ${err.message}`, 'error');
+                            return;
+                        }
+                    } else if (photo_source && photo_source.value === 'airbnb_url') {
+                        // Validate Airbnb URL format
+                        const url_lower = airbnb_url.value.toLowerCase();
+                        if (!url_lower.includes('airbnb') && !url_lower.includes('vrbo')) {
                         showMessage('❌ Please enter a valid Airbnb or VRBO listing URL', 'error');
                         return;
                     }
@@ -755,6 +836,96 @@
             const msg = document.getElementById('message');
             msg.textContent = text;
             msg.className = `message ${type}`;
+        }
+        
+        // ============================================================
+        // PHOTO SOURCE TOGGLE: Airbnb Link vs Manual Upload
+        // ============================================================
+        
+        let manualUploadedFiles = [];
+        
+        // Handle radio button change for photo source selection
+        document.querySelectorAll('input[name="photo_source"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const photoSource = this.value;
+                console.log(`Photo source changed to: ${photoSource}`);
+                
+                if (photoSource === 'airbnb_url') {
+                    // Show URL input, hide manual upload
+                    document.getElementById('airbnb_url_group').style.display = 'block';
+                    document.getElementById('manual_upload_group').style.display = 'none';
+                    document.getElementById('airbnb_url_input').required = true;
+                    manualUploadedFiles = [];
+                    document.getElementById('manual_photos_preview').style.display = 'none';
+                } else {
+                    // Show manual upload, hide URL input
+                    document.getElementById('airbnb_url_group').style.display = 'none';
+                    document.getElementById('manual_upload_group').style.display = 'block';
+                    document.getElementById('airbnb_url_input').required = false;
+                    document.getElementById('airbnb_url_input').value = '';
+                }
+            });
+        });
+        
+        // Handle manual photo selection
+        function handleManualPhotoSelect(event) {
+            manualUploadedFiles = Array.from(event.target.files);
+            updateManualPhotoPreview();
+        }
+        
+        // Handle drag-and-drop for photos
+        function handlePhotoDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            manualUploadedFiles = Array.from(event.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            
+            // Update file input
+            const fileInput = document.getElementById('manual_upload_input');
+            const dataTransfer = new DataTransfer();
+            manualUploadedFiles.forEach(f => dataTransfer.items.add(f));
+            fileInput.files = dataTransfer.files;
+            
+            updateManualPhotoPreview();
+        }
+        
+        // Update preview of selected photos
+        function updateManualPhotoPreview() {
+            const preview = document.getElementById('manual_photos_preview');
+            const photoList = document.getElementById('manual_photos_list');
+            const photoCount = document.getElementById('manual_photos_count');
+            
+            if (manualUploadedFiles.length === 0) {
+                preview.style.display = 'none';
+                return;
+            }
+            
+            preview.style.display = 'block';
+            photoList.innerHTML = '';
+            
+            manualUploadedFiles.forEach((file, idx) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.width = '100%';
+                    img.style.height = '100%';
+                    img.style.objectFit = 'cover';
+                    img.style.borderRadius = '4px';
+                    
+                    const container = document.createElement('div');
+                    container.style.position = 'relative';
+                    container.style.paddingBottom = '100%';
+                    container.style.overflow = 'hidden';
+                    container.appendChild(img);
+                    
+                    photoList.appendChild(container);
+                };
+                reader.readAsDataURL(file);
+            });
+            
+            const count = manualUploadedFiles.length;
+            const status = count >= 3 ? '✅' : '⚠️';
+            photoCount.innerHTML = `${status} ${count} photo${count !== 1 ? 's' : ''} selected ${count < 3 ? '(need 3+)' : '(ready)'}`;
         }
         
         async function handleSubmit(event) {
@@ -862,7 +1033,7 @@
                 const formData = {
                     email: email,
                     property_name: property_name,
-                    airbnb_url: airbnb_url,
+                    airbnb_url: photo_source && photo_source.value === 'airbnb_url' ? airbnb_url : null,
                     listing_type: document.querySelector('select[name="listing_type"]').value,
                     bedrooms: parseInt(document.querySelector('select[name="bedrooms"]').value),
                     bathrooms: parseInt(document.querySelector('select[name="bathrooms"]').value),
@@ -871,16 +1042,25 @@
                     guest_comfort_checklist: Array.from(document.querySelectorAll('input[name="comfort"]:checked')).map(cb => cb.value),
                     report_type: report_type,
                     wants_marketing_emails: document.querySelector('input[name="wants_marketing_emails"]').checked,
-                    // Include uploaded vision results if they exist
+                    // Include uploaded vision results if they exist (from manual upload)
                     vision_results: window._uploadedVisionResults || null
                 };
                 
-                // MANDATORY: Scrape photos and analyze with Vision AI
-                // This is required for all submissions
-                if (!airbnb_url) {
-                    showMessage('❌ Airbnb/VRBO URL is required to analyze your property.', 'error');
-                    submitBtn.disabled = false;
-                    return;
+                // Validation based on photo source
+                if (photo_source && photo_source.value === 'airbnb_url') {
+                    // Airbnb URL required
+                    if (!airbnb_url) {
+                        showMessage('❌ Airbnb/VRBO URL is required.', 'error');
+                        submitBtn.disabled = false;
+                        return;
+                    }
+                } else if (photo_source && photo_source.value === 'manual_upload') {
+                    // Manual upload path - photos already uploaded
+                    if (!window._uploadedVisionResults) {
+                        showMessage('❌ Photos were not analyzed. Please try uploading again.', 'error');
+                        submitBtn.disabled = false;
+                        return;
+                    }
                 }
                 
                 try {
