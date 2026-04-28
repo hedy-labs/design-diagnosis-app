@@ -28,24 +28,31 @@ class VisionAnalyzerV2:
     
     async def analyze_images_batch(self, image_urls: List[str], max_images: int = 10) -> Dict:
         """
-        Analyze multiple property images in parallel using Claude Vision.
+        Analyze entire property holistically using all uploaded images.
         
-        Deduplicates images, samples best ones per room, analyzes in parallel.
+        PHASE 3: Single Claude call with all images, returns holistic design scorecard.
         
         Args:
-            image_urls: List of direct image URLs (from photo scraper)
+            image_urls: List of direct image URLs (from photo scraper) OR base64 data URIs
             max_images: Max images to analyze (default 10)
         
         Returns:
             {
-                'lighting_quality': 0-20,
-                'color_harmony': 0-20,
-                'clutter_density': 0-20,
-                'staging_integrity': 0-20,
-                'functionality': 0-20,
-                'guest_psychology': str,
-                'room_summaries': {'kitchen': {...}, 'bedroom': {...}, ...},
-                'raw_analyses': [list of individual image analyses]
+                'design_scorecard': {
+                    'lighting_quality': 0-6,
+                    'color_harmony': 0-6,
+                    'clutter_density': 0-6,
+                    'staging_integrity': 0-6,
+                    'functionality': 0-6,
+                    'total_design_score': 0-30
+                },
+                'honest_marketing_status': 'High Trust|Medium Trust|Low Trust',
+                'top_3_fixes': [
+                    {'priority': 1-3, 'title': str, 'experience_logic_rationale': str}
+                ],
+                'room_by_room_diagnosis': [
+                    {'room': str, 'diagnosis': str, 'actionable_subtractions': [], 'actionable_additions': []}
+                ]
             }
         """
         
@@ -56,50 +63,147 @@ class VisionAnalyzerV2:
         try:
             # Smart sample images
             logger.info(f"📸 Deduplicating {len(image_urls)} images...")
+            print(f"[VISION] 📸 Deduplicating {len(image_urls)} images...")
             sampled = await self._smart_sample(image_urls, max_count=max_images)
-            logger.info(f"✅ Sampled {len(sampled)} unique images for analysis")
+            logger.info(f"✅ Sampled {len(sampled)} unique images for holistic analysis")
+            print(f"[VISION] ✅ Using {len(sampled)} unique images for analysis")
             
-            # Batch analyze in parallel
-            logger.info(f"🤖 Analyzing {len(sampled)} images with Vision AI...")
-            print(f"[VISION] 🤖 Starting batch analysis of {len(sampled)} images")
-            tasks = [self._analyze_single_image(url) for url in sampled]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
+            # PHASE 3: Single holistic Claude call with ALL images
+            logger.info(f"🤖 Starting HOLISTIC analysis of entire property...")
+            print(f"[VISION] 🤖 PHASE 3: Holistic property analysis (single Claude call)")
             
-            # Filter out errors and print details
-            valid_results = [r for r in results if isinstance(r, dict) and r.get('success')]
-            failed_results = [r for r in results if isinstance(r, Exception) or (isinstance(r, dict) and not r.get('success'))]
-            failed = len(failed_results)
+            result = await self._analyze_property_holistically(sampled)
             
-            if failed > 0:
-                print(f"[VISION] ⚠️  {failed} images FAILED in batch analysis:")
-                for idx, result in enumerate(failed_results):
-                    if isinstance(result, Exception):
-                        print(f"[VISION]    Image {idx + 1}: Exception: {type(result).__name__}: {str(result)}")
-                    elif isinstance(result, dict):
-                        error_msg = result.get('error', 'Unknown error')
-                        error_type = result.get('error_type', 'Unknown')
-                        print(f"[VISION]    Image {idx + 1}: {error_type}: {error_msg}")
-                logger.warning(f"⚠️  {failed} images failed to analyze")
-                for result in failed_results:
-                    if isinstance(result, dict):
-                        logger.warning(f"      Error: {result.get('error')}")
-            
-            if not valid_results:
-                logger.warning("⚠️  No successful vision analyses, using default scores")
-                return self._default_scores()
-            
-            # Aggregate scores
-            logger.info(f"📊 Aggregating {len(valid_results)} analyses...")
-            aggregated = self._aggregate_scores(valid_results)
-            aggregated['raw_analyses'] = valid_results
-            
-            logger.info(f"✅ Vision analysis complete")
-            return aggregated
+            logger.info(f"✅ Holistic analysis complete")
+            print(f"[VISION] ✅ Holistic analysis complete")
+            return result
         
         except Exception as e:
-            logger.error(f"❌ Batch analysis error: {e}")
+            logger.error(f"❌ Holistic analysis error: {e}")
+            print(f"[VISION] ❌ Analysis failed: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             logger.info("📧 Falling back to default scores")
             return self._default_scores()
+    
+    async def _analyze_property_holistically(self, image_urls: List[str]) -> Dict:
+        """
+        PHASE 3: Single Claude Vision call analyzing ALL images together.
+        Returns holistic design scorecard with room diagnosis and fix recommendations.
+        """
+        try:
+            import anthropic
+            
+            client = anthropic.Anthropic(api_key=self.api_key)
+            
+            logger.info(f"📤 Sending {len(image_urls)} images to Claude for holistic analysis...")
+            print(f"[VISION] 📤 Building multi-image request for Claude...")
+            
+            # Build content array with all images
+            content = []
+            
+            # Add all images to content
+            for idx, image_url in enumerate(image_urls):
+                logger.info(f"   Adding image {idx + 1}/{len(image_urls)} to payload...")
+                
+                if image_url.startswith("data:"):
+                    # Base64 data URI
+                    image_source = self._parse_data_uri(image_url)
+                else:
+                    # HTTP URL
+                    image_source = {"type": "url", "url": image_url}
+                
+                content.append({
+                    "type": "image",
+                    "source": image_source
+                })
+            
+            # Add master prompt text
+            master_prompt = """You are an elite interior designer and hospitality strategist. Analyze this ENTIRE property holistically across all provided photos.
+
+RETURN EXACTLY THIS JSON SCHEMA (no markdown, no preamble):
+
+{
+  "design_scorecard": {
+    "lighting_quality": <0-6>,
+    "color_harmony": <0-6>,
+    "clutter_density": <0-6>,
+    "staging_integrity": <0-6>,
+    "functionality": <0-6>,
+    "total_design_score": <sum of above, 0-30>
+  },
+  "honest_marketing_status": "<High Trust | Medium Trust | Low Trust>",
+  "top_3_fixes": [
+    {
+      "priority": <1-3>,
+      "title": "<Blunt, actionable title>",
+      "experience_logic_rationale": "<Why this matters for guest experience>"
+    }
+  ],
+  "room_by_room_diagnosis": [
+    {
+      "room": "<Name of room detected>",
+      "diagnosis": "<Critical evaluation of layout and staging>",
+      "actionable_subtractions": ["<Item to remove>"],
+      "actionable_additions": ["<Item to add>"]
+    }
+  ]
+}
+
+SCORING GUIDE:
+- Lighting: Overhead only=1, Task+accent layering=6
+- Color: Clashing tones=0, Intentional palette=6
+- Clutter: Overwhelming visual noise=0, Serene breathing room=6
+- Staging: Bare/mismatched=0, Professional designer-curated=6
+- Functionality: No guest amenities=0, Intuitive luxury layout=6
+
+EXPERIENCE LOGIC: How do these spaces MAKE GUESTS FEEL? Honest marketing = photos match reality."""
+            
+            content.append({
+                "type": "text",
+                "text": master_prompt
+            })
+            
+            print(f"[VISION] 📤 Sending {len(image_urls)} images + master prompt to Claude...")
+            
+            # Single API call with all images
+            message = client.messages.create(
+                model=self.model,
+                max_tokens=2000,  # Increased for holistic response
+                messages=[{
+                    "role": "user",
+                    "content": content
+                }]
+            )
+            
+            print(f"[VISION] ✅ Claude response received")
+            
+            # Parse response
+            response_text = message.content[0].text.strip()
+            
+            # Handle markdown code blocks
+            if '```' in response_text:
+                response_text = response_text.split('```')[1]
+                if response_text.startswith('json'):
+                    response_text = response_text[4:]
+            
+            result = json.loads(response_text)
+            
+            logger.info(f"✅ Holistic analysis parsed successfully")
+            logger.info(f"   Design Score: {result['design_scorecard']['total_design_score']}/30")
+            logger.info(f"   Trust Status: {result['honest_marketing_status']}")
+            logger.info(f"   Top Fix: {result['top_3_fixes'][0]['title']}")
+            
+            print(f"[VISION] ✅ Result: {result['design_scorecard']['total_design_score']}/30")
+            
+            return result
+        
+        except Exception as e:
+            logger.error(f"❌ Holistic analysis failed: {e}")
+            print(f"[VISION] ❌ Holistic analysis error: {type(e).__name__}: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            raise
     
     async def _smart_sample(self, image_urls: List[str], max_count: int = 10) -> List[str]:
         """
