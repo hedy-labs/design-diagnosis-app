@@ -136,10 +136,20 @@ class PDFTemplates:
                 }}
                 
                 body {{
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                     color: #1f2937;
                     line-height: 1.6;
                     background: white;
+                }}
+                
+                /* BUG FIX 3: Ensure fonts render in PDF */
+                h1, h2, h3, h4, h5, h6 {{
+                    font-family: 'Playfair Display', Georgia, serif;
+                }}
+                
+                /* Gold/champagne accent color for premium aesthetic */
+                .accent-color {{
+                    color: #C9A876;
                 }}
                 
                 .container {{
@@ -149,8 +159,9 @@ class PDFTemplates:
                 }}
                 
                 .header {{
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
+                    background: white;
+                    border-bottom: 2px solid #C9A876;
+                    color: #2C3E50;
                     padding: 40px;
                     border-radius: 8px;
                     text-align: center;

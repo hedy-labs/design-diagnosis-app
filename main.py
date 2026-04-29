@@ -567,6 +567,11 @@ async def submit_form(form_data: FormSubmitInput, background_tasks: BackgroundTa
         
         logger.info(f"🔍 User status: {'Returning Verified ✅' if is_returning_verified else 'New/Unverified'}")
         
+        # BUG FIX 1: Log comfort data to debug data loss
+        print(f"[FORM] 📋 Received comfort checklist: {form_data.guest_comfort_checklist}")
+        print(f"[FORM]    Items count: {len(form_data.guest_comfort_checklist) if form_data.guest_comfort_checklist else 0}")
+        logger.info(f"📋 Comfort items received: {form_data.guest_comfort_checklist}")
+        
         # Save form submission (with optional vision_results if provided)
         submission = db.create_form_submission(
             email=form_data.email,
