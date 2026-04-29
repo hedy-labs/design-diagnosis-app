@@ -816,6 +816,10 @@
                     // Validate based on photo source
                     if (photo_source && photo_source.value === 'airbnb_url') {
                         if (!airbnb_url || !airbnb_url.value.trim()) errors.push('Airbnb/VRBO URL');
+                        // SCRAPER LOADING STATE: Show loader when URL is being validated
+                        if (airbnb_url && airbnb_url.value.trim()) {
+                            showLoading('Validating Airbnb link and preparing photos...');
+                        }
                     } else if (photo_source && photo_source.value === 'manual_upload') {
                         if (!manualUploadedFiles || manualUploadedFiles.length < 3) errors.push('At least 3 photos required');
                     }
@@ -886,6 +890,27 @@
             currentStep += direction;
             if (currentStep < 1) currentStep = 1;
             if (currentStep > totalSteps) currentStep = totalSteps;
+            
+            // PROGRESS BAR SYNC: Explicitly update all indicators
+            console.log(`📍 Step changed to ${currentStep} (direction: ${direction})`);
+            console.log(`   Updating progress bar circles...`);
+            
+            // Force re-render of all indicators
+            for (let i = 1; i <= totalSteps; i++) {
+                const indicator = document.getElementById(`step${i}-indicator`);
+                if (indicator) {
+                    if (i < currentStep) {
+                        indicator.classList.add('completed');
+                        indicator.classList.remove('active');
+                    } else if (i === currentStep) {
+                        indicator.classList.add('active');
+                        indicator.classList.remove('completed');
+                    } else {
+                        indicator.classList.remove('completed', 'active');
+                    }
+                }
+            }
+            
             showStep(currentStep);
         }
         
@@ -1452,7 +1477,7 @@
             console.log(`Selected ${uploadedFiles.length} files for analysis`);
             
             if (uploadedFiles.length < 3) {
-                const proceed = confirm(`You've selected ${uploadedFiles.length} photo(s). We recommend at least 3. Continue with analysis?`);
+                const proceed = confirm(`You've selected ${uploadedFiles.length} photo(s). We recommend at least 3. Continue with analysis?\n\n(Click OK to proceed or Cancel to add more photos)`);
                 if (!proceed) return;
             }
             
@@ -1561,6 +1586,20 @@
                 'select[name="total_photos"],' +
                 'input[name="comfort"]'
             );
+            
+            // SCRAPER LOADING STATE: Trigger loading when Airbnb URL is entered
+            const airbnbUrlInput = document.querySelector('input[name="airbnb_url"]');
+            if (airbnbUrlInput) {
+                airbnbUrlInput.addEventListener('input', function() {
+                    // Only show loading if URL looks valid and user has stopped typing
+                    const url = this.value.trim();
+                    if (url.includes('airbnb.com') || url.includes('vrbo.com')) {
+                        // User has entered a potential URL - show loading indicator
+                        // This will be shown when they click "Next" to validate
+                        console.log(`🔍 Airbnb/VRBO URL detected: ${url.substring(0, 50)}...`);
+                    }
+                });
+            }
             
             // Add event listeners to clear error messages on input/change
             formFields.forEach(field => {

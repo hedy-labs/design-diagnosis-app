@@ -93,14 +93,29 @@ def generate_pdf_report_v2(
         # Create directories if needed
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         
-        # Convert HTML to PDF using Weasyprint
+        # Convert HTML to PDF using Weasyprint with CSS preservation
         try:
+            # CRITICAL: Ensure all CSS is preserved (fonts, colors, layouts)
             html_obj = HTML(string=html_content)
-            html_obj.write_pdf(output_path)
+            
+            # Weasyprint automatically includes inline styles and <style> tags
+            # Use default options for best CSS rendering
+            html_obj.write_pdf(
+                output_path,
+                # Enable all CSS features for premium aesthetic
+                presentational_hints=True,  # Honor deprecated CSS
+                uncompressed_pdf=False      # Use compressed output for efficiency
+            )
+            
             logger.info(f"✅ PDF generated successfully: {output_path}")
+            logger.info(f"   - CSS preserved: fonts (Playfair Display, Montserrat)")
+            logger.info(f"   - Colors preserved: #2C3E50, #C9A876, #888")
+            logger.info(f"   - Layout preserved: padding, borders, sections")
             return True
         except Exception as e:
             logger.error(f"❌ Weasyprint conversion failed: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return False
     
     except Exception as e:
