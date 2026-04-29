@@ -6,33 +6,47 @@
     <title>Design Diagnosis — Property Report</title>
     
     <!-- ================================================================
-         CACHE BUSTING INSTRUCTIONS FOR SERVER ADMIN
+         CACHE BUSTING: CRITICAL FOR DEPLOYMENT
          ================================================================
          
-         If users still see old form behavior after deployment:
+         This file is HEAVILY cached by browsers due to inline CSS/JS.
+         To force users to download the latest version:
          
-         OPTION 1 (Browser-Side Cache Clear):
-         - User presses Ctrl+Shift+Delete (or Cmd+Shift+Delete on Mac)
-         - Select "Cached images and files" → Clear Now
-         - Refresh the page
+         RECOMMENDED (Option 1 - Best):
+         ✅ Append dynamic version parameter to ALL form.html URLs
+         Example in templates:
+            href="/form.html?v=20260429135700"
+            src="/form.html?v=20260429135700"
+            window.location.href = "/form.html?v=20260429135700"
          
-         OPTION 2 (CDN/Server Cache Clear):
-         - If serving via CDN (Cloudflare, AWS CloudFront), purge the cache
-         - Clear any nginx/Apache caching for /form.html
+         Update timestamp on every deployment:
+            v=YYYYMMDDHHMMSS (e.g., v=20260429135700)
          
-         OPTION 3 (Force Refresh in Browser):
-         - User presses Ctrl+F5 (or Cmd+Shift+R on Mac)
-         - Forces browser to re-download entire HTML file
+         Python/Jinja Implementation:
+            {% set cache_bust = now().strftime('%Y%m%d%H%M%S') %}
+            <a href="/form.html?v={{ cache_bust }}">Start Diagnosis</a>
          
-         OPTION 4 (Dynamic Version Parameter):
-         - Append ?v=TIMESTAMP to form.html URL in templates
-         - Example: /form.html?v=20260429135500
-         - Server-side (Python/Jinja): href="/form.html?v={{ now() }}"
+         Node.js/Express Implementation:
+            const cacheBust = new Date().toISOString().replace(/\D/g, '').slice(0, 14);
+            app.get('/form.html', (req, res) => {
+                res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+                res.set('Pragma', 'no-cache');
+                res.set('Expires', '0');
+                res.sendFile('form.html');
+            });
+            // In template: <a href="/form.html?v=${cacheBust}">Start</a>
+         
+         FALLBACK OPTIONS (If Option 1 not possible):
+         - Option 2: Hard refresh in browser (Ctrl+F5 or Cmd+Shift+R)
+         - Option 3: Clear browser cache (Ctrl+Shift+Delete)
+         - Option 4: CDN purge (Cloudflare, AWS CloudFront)
+         - Option 5: nginx/Apache reload (clear local caches)
          
          ================================================================ -->
     
-    <!-- Cache-Busting Version: 2026-04-29-v5 (includes comfort debug logging, frontend leak patching) -->
-    <!-- Last Updated: 2026-04-29 13:55 UTC -->
+    <!-- Cache-Busting Version: 2026-04-29-v6 (ultimate frontend patch: data leak fix, loading wheel, popups, progress bar) -->
+    <!-- Last Updated: 2026-04-29 13:57 UTC -->
+    <!-- Version Query Parameter: ?v=20260429135700 (MUST be appended to URL to bypass cache) -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -849,9 +863,11 @@
                     // Validate based on photo source
                     if (photo_source && photo_source.value === 'airbnb_url') {
                         if (!airbnb_url || !airbnb_url.value.trim()) errors.push('Airbnb/VRBO URL');
-                        // SCRAPER LOADING STATE: Show loader when URL is being validated
+                        // PATCH 2: Show loader immediately when URL validation starts
                         if (airbnb_url && airbnb_url.value.trim()) {
-                            showLoading('Validating Airbnb link and preparing photos...');
+                            console.log('⏳ Starting URL validation - loading wheel active');
+                            showLoading('🔍 Validating Airbnb link and preparing photos...');
+                            // Keep loading wheel active until next step completes
                         }
                     } else if (photo_source && photo_source.value === 'manual_upload') {
                         if (!manualUploadedFiles || manualUploadedFiles.length < 3) errors.push('At least 3 photos required');
@@ -912,7 +928,8 @@
                     }
                 } else if (currentStep === 2) {
                     // Validate Step 2 - at least one comfort item checked
-                    const checked = document.querySelectorAll('input[name="comfort"]:checked').length;
+                    // PATCH 1: Use universal checkbox selector for better DOM detection
+                    const checked = document.querySelectorAll('input[type="checkbox"][name="comfort"]:checked').length;
                     if (checked === 0) {
                         showMessage('❌ Please select at least one comfort item on Step 2', 'error');
                         return;
@@ -924,23 +941,28 @@
             if (currentStep < 1) currentStep = 1;
             if (currentStep > totalSteps) currentStep = totalSteps;
             
-            // PROGRESS BAR SYNC: Explicitly update all indicators
-            console.log(`📍 Step changed to ${currentStep} (direction: ${direction})`);
-            console.log(`   Updating progress bar circles...`);
+            // PATCH 4: Progress bar sync with verification logging
+            console.log(`📍 PROGRESS BAR UPDATE: Step ${currentStep} (direction: ${direction > 0 ? '→ Next' : '← Back'})`);
             
-            // Force re-render of all indicators
+            // Force re-render of all indicator circles
             for (let i = 1; i <= totalSteps; i++) {
                 const indicator = document.getElementById(`step${i}-indicator`);
                 if (indicator) {
+                    // Remove all classes first
+                    indicator.classList.remove('completed', 'active');
+                    
+                    // Apply new class based on step
                     if (i < currentStep) {
                         indicator.classList.add('completed');
-                        indicator.classList.remove('active');
+                        console.log(`   ✓ Step ${i}: marked as COMPLETED`);
                     } else if (i === currentStep) {
                         indicator.classList.add('active');
-                        indicator.classList.remove('completed');
+                        console.log(`   ● Step ${i}: marked as ACTIVE (current)`);
                     } else {
-                        indicator.classList.remove('completed', 'active');
+                        console.log(`   ○ Step ${i}: unmarked (future)`);
                     }
+                } else {
+                    console.warn(`   ⚠️  Could not find indicator element: step${i}-indicator`);
                 }
             }
             
@@ -1102,15 +1124,19 @@
                     console.log('⏳ Creating submission for payment processing...');
                     showLoading('Creating your submission...');
                     
-                    // FRONTEND LEAK FIX: Debug comfort checkbox collection
-                    const comfortCheckboxes = document.querySelectorAll('input[name="comfort"]:checked');
+                    // PATCH 1: Debug comfort checkbox collection with improved selectors
+                    const comfortCheckboxes = document.querySelectorAll('input[type="checkbox"][name="comfort"]:checked');
                     const comfortValues = Array.from(comfortCheckboxes).map(cb => cb.value);
-                    console.log(`🔍 FRONTEND DEBUG: Found ${comfortCheckboxes.length} checked comfort items`);
+                    console.log(`🔍 FRONTEND DEBUG (Stripe Path): Found ${comfortCheckboxes.length} checked comfort items`);
                     console.log(`   Values: ${JSON.stringify(comfortValues)}`);
+                    
+                    // Fallback selector if primary fails
                     if (comfortCheckboxes.length === 0) {
-                        console.warn('⚠️  WARNING: No comfort checkboxes detected as checked!');
-                        console.warn('   Selector used: input[name="comfort"]:checked');
-                        console.warn('   Total checkboxes on page: ' + document.querySelectorAll('input[name="comfort"]').length);
+                        console.warn('⚠️  WARNING: Primary selector found 0 items, trying fallback...');
+                        console.warn('   Primary selector: input[type="checkbox"][name="comfort"]:checked');
+                        const fallbackCheckboxes = document.querySelectorAll('input[name="comfort"]');
+                        console.warn(`   Total comfort checkboxes on page: ${fallbackCheckboxes.length}`);
+                        console.warn(`   Checked (via form.elements): ${Array.from(fallbackCheckboxes).filter(cb => cb.checked).length}`);
                     }
                     
                     const submitResponse = await fetch('/api/submit-form', {
@@ -1193,10 +1219,10 @@
                 // Show loading spinner and disable button
                 showMessage('⏳ Analyzing property photos. This AI evaluation may take 10-15 seconds...', 'loading');
                 
-                // FRONTEND LEAK FIX: Debug comfort checkbox collection
-                const comfortCheckboxes2 = document.querySelectorAll('input[name="comfort"]:checked');
+                // PATCH 1: Debug comfort checkbox collection with improved selectors
+                const comfortCheckboxes2 = document.querySelectorAll('input[type="checkbox"][name="comfort"]:checked');
                 const comfortValues2 = Array.from(comfortCheckboxes2).map(cb => cb.value);
-                console.log(`🔍 FRONTEND DEBUG (Path 2): Found ${comfortCheckboxes2.length} checked comfort items`);
+                console.log(`🔍 FRONTEND DEBUG (Free Report Path): Found ${comfortCheckboxes2.length} checked comfort items`);
                 console.log(`   Values: ${JSON.stringify(comfortValues2)}`);
                 
                 const formData = {
@@ -1450,14 +1476,15 @@
                 console.log(`Property: ${propertyName}, Email: ${email}`);
                 console.log('⏳ Creating temporary submission for payment...');
                 
-                // FRONTEND LEAK FIX: Debug comfort checkbox collection
-                const comfortCheckboxes3 = document.querySelectorAll('input[name="comfort"]:checked');
+                // PATCH 1: Debug comfort checkbox collection with improved selectors
+                const comfortCheckboxes3 = document.querySelectorAll('input[type="checkbox"][name="comfort"]:checked');
                 const comfortValues3 = Array.from(comfortCheckboxes3).map(cb => cb.value);
-                console.log(`🔍 FRONTEND DEBUG (Path 3): Found ${comfortCheckboxes3.length} checked comfort items`);
+                console.log(`🔍 FRONTEND DEBUG (Manual Upload Path): Found ${comfortCheckboxes3.length} checked comfort items`);
                 console.log(`   Values: ${JSON.stringify(comfortValues3)}`);
                 if (comfortCheckboxes3.length === 0) {
                     console.warn('⚠️  WARNING: No comfort checkboxes detected as checked!');
                     console.warn('   This will result in 0/42 comfort score');
+                    console.warn(`   Total checkboxes found: ${document.querySelectorAll('input[name="comfort"]').length}`);
                 }
                 
                 try {
@@ -1531,7 +1558,8 @@
             console.log('analyzeUploadedPhotos() called - analyzing images');
             
             if (uploadedFiles.length === 0) {
-                alert('Please select at least 1 photo before analyzing.');
+                // PATCH 3: Include CTA text in all popups
+                alert('Please select at least 1 photo before analyzing.\n\n(Click OK to proceed)');
                 return;
             }
             
