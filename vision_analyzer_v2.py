@@ -23,8 +23,10 @@ class VisionAnalyzerV2:
     
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
-        # Use Claude 3.5 Sonnet latest stable version
-        self.model = "claude-3-5-sonnet-latest"
+        # DYNAMIC MODEL VERSIONING: Load from .env file for flexibility
+        # Default to latest if not configured
+        self.model = os.getenv("CLAUDE_MODEL", "claude-3-5-sonnet-latest")
+        logger.info(f"🤖 Vision Analyzer initialized with model: {self.model}")
     
     async def analyze_images_batch(self, image_urls: List[str], max_images: int = 10) -> Dict:
         """
