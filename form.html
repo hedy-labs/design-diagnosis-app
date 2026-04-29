@@ -12,6 +12,45 @@
             box-sizing: border-box;
         }
         
+        /* LOADING OVERLAY */
+        #loadingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        #loadingOverlay.active {
+            display: flex;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            color: white;
+            font-size: 18px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
                 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
@@ -340,6 +379,14 @@
     </style>
 </head>
 <body>
+    <!-- LOADING OVERLAY -->
+    <div id="loadingOverlay">
+        <div style="text-align: center;">
+            <div class="spinner"></div>
+            <div class="loading-text">Processing your property...</div>
+        </div>
+    </div>
+    
     <div class="container">
         <!-- Header -->
         <div class="header">
@@ -705,6 +752,16 @@
         let currentStep = 1;
         const totalSteps = 3;
         
+        // LOADING STATE MANAGEMENT
+        function showLoading(message = 'Processing your property...') {
+            document.getElementById('loadingOverlay').classList.add('active');
+            document.querySelector('.loading-text').textContent = message;
+        }
+        
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.remove('active');
+        }
+        
         function showStep(step) {
             // Hide all steps
             document.getElementById('step1').style.display = 'none';
@@ -985,6 +1042,7 @@
                     
                     // Create submission first
                     console.log('⏳ Creating submission for payment processing...');
+                    showLoading('Creating your submission...');
                     const submitResponse = await fetch('/api/submit-form', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -1016,6 +1074,7 @@
                     
                     // Create Stripe checkout session
                     console.log('💳 Creating Stripe checkout session...');
+                    showLoading('Preparing payment...');
                     const checkoutResponse = await fetch('/api/create-checkout-session', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -1037,9 +1096,11 @@
                     const { session_id, url } = await checkoutResponse.json();
                     console.log(`✅ Stripe session: ${session_id}`);
                     console.log(`🔗 Redirecting to: ${url}`);
+                    hideLoading();
                     window.location.href = url;
                     return;
                 } catch (error) {
+                    hideLoading();
                     console.error('❌ Premium payment flow error:');
                     console.error('   Message:', error.message);
                     console.error('   Stack:', error.stack);
@@ -1399,6 +1460,7 @@
             analyzeBtn.disabled = true;
             analyzeBtn.style.opacity = '0.5';
             
+            showLoading('Uploading and analyzing photos... (10-15 seconds)');
             showMessage('🔄 Analyzing uploaded photos. This may take 10-15 seconds...', 'loading');
             console.log('Showing loading message, starting upload...');
             
@@ -1434,6 +1496,7 @@
                     window._uploadedVisionResults = result.vision_results;
                     console.log('Vision results stored:', result.vision_results);
                     
+                    hideLoading();
                     showMessage('✅ Photo analysis complete! Proceeding to final step...', 'success');
                     console.log('Hiding fallback, showing step 3...');
                     document.getElementById('photoFallback').style.display = 'none';
@@ -1452,9 +1515,11 @@
                     showStep(3);
                     console.log('Ready for form submission');
                 } else {
+                    hideLoading();
                     throw new Error(result.error || 'Analysis returned no vision results.');
                 }
             } catch (error) {
+                hideLoading();
                 console.error('❌ Photo analysis error:', error);
                 console.error('Error stack:', error.stack);
                 showMessage(`❌ Analysis failed: ${error.message}`, 'error');
