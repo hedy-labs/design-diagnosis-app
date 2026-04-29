@@ -230,38 +230,41 @@ class EmailService:
                     fixes_html += f"<li><strong>#{i}: {title}</strong><br/>{desc}<br/><em>Est. Cost: ${cost}+</em></li>"
                 fixes_html += "</ul></div>"
             
-            subject = f"Your Design Diagnosis Report — {property_name} ({grade})"
+            subject = f"Your Design Diagnosis: {property_name} Scores {vitality_score}/100 ({grade})"
             html_content = f"""
+            <!DOCTYPE html>
             <html>
             <head>
+                <meta charset="UTF-8">
                 <style>
-                    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; color: #333; line-height: 1.6; }}
-                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-                    .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; border-radius: 8px; text-align: center; }}
-                    .header h1 {{ margin: 0; font-size: 28px; font-weight: bold; }}
-                    .header p {{ margin: 10px 0 0 0; opacity: 0.95; font-size: 16px; }}
-                    .score-card {{ background: #f0f4ff; border-left: 4px solid #667eea; padding: 30px; margin: 20px 0; border-radius: 8px; text-align: center; }}
-                    .score {{ font-size: 56px; font-weight: bold; color: #667eea; margin: 10px 0; }}
-                    .grade {{ font-size: 18px; color: #764ba2; font-weight: bold; margin-top: 10px; }}
-                    .content {{ padding: 30px; background: #f9f9f9; border-radius: 8px; margin: 20px 0; }}
-                    .content h2 {{ color: #667eea; margin-top: 0; font-size: 20px; }}
-                    .content ul {{ margin: 15px 0; padding-left: 20px; }}
-                    .content li {{ margin: 10px 0; color: #555; }}
-                    .content a {{ color: #667eea; text-decoration: none; font-weight: 500; }}
-                    .content a:hover {{ text-decoration: underline; }}
-                    .cta-button {{
-                        display: inline-block;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        color: white;
-                        padding: 14px 32px;
-                        text-decoration: none;
-                        border-radius: 6px;
-                        font-weight: bold;
-                        margin: 20px 0;
-                        font-size: 16px;
-                    }}
-                    .footer {{ color: #999; font-size: 13px; text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; }}
-                    .footer p {{ margin: 8px 0; }}
+                    * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+                    body {{ font-family: 'Montserrat', -apple-system, sans-serif; color: #2C3E50; line-height: 1.8; background: #f5f5f5; }}
+                    .container {{ max-width: 620px; margin: 0 auto; background: white; }}
+                    .header {{ background: white; padding: 50px 40px; text-align: center; border-bottom: 1px solid #e8e8e8; }}
+                    .header h1 {{ font-family: 'Playfair Display', serif; font-size: 32px; color: #2C3E50; margin-bottom: 8px; font-weight: 700; }}
+                    .header p {{ color: #888; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }}
+                    .score-section {{ padding: 50px 40px; background: white; text-align: center; border-bottom: 1px solid #e8e8e8; }}
+                    .score-number {{ font-size: 72px; font-weight: 700; color: #C9A876; line-height: 1; }}
+                    .score-label {{ color: #888; font-size: 14px; margin-top: 12px; text-transform: uppercase; letter-spacing: 0.5px; }}
+                    .grade-display {{ font-size: 18px; color: #2C3E50; font-weight: 700; margin-top: 16px; }}
+                    .section {{ padding: 40px; border-bottom: 1px solid #e8e8e8; }}
+                    .section h2 {{ font-family: 'Playfair Display', serif; font-size: 22px; color: #2C3E50; margin-bottom: 20px; font-weight: 700; }}
+                    .section p {{ color: #555; margin-bottom: 16px; font-size: 15px; line-height: 1.8; }}
+                    .fix-item {{ margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid #f0f0f0; }}
+                    .fix-item:last-child {{ border-bottom: none; }}
+                    .fix-title {{ font-weight: 700; color: #2C3E50; margin-bottom: 8px; font-size: 16px; }}
+                    .fix-desc {{ color: #666; font-size: 14px; margin-bottom: 8px; }}
+                    .fix-cost {{ color: #C9A876; font-weight: 600; font-size: 14px; }}
+                    .shopping-list {{ margin-top: 16px; }}
+                    .shopping-item {{ background: #fafafa; padding: 16px; margin-bottom: 12px; border-left: 3px solid #C9A876; }}
+                    .shopping-item-name {{ font-weight: 600; color: #2C3E50; margin-bottom: 4px; }}
+                    .shopping-item-price {{ color: #C9A876; font-size: 14px; font-weight: 600; }}
+                    .cta-button {{ display: inline-block; background: #C9A876; color: white; padding: 16px 40px; text-decoration: none; border-radius: 3px; font-weight: 600; margin: 20px 0; font-size: 15px; }}
+                    .cta-button:hover {{ background: #B8995F; }}
+                    .footer {{ background: #f9f9f9; padding: 30px 40px; text-align: center; border-top: 1px solid #e8e8e8; }}
+                    .footer p {{ color: #888; font-size: 12px; margin: 6px 0; }}
+                    .footer a {{ color: #C9A876; text-decoration: none; }}
+                    .divider {{ height: 1px; background: #e8e8e8; margin: 0; }}
                     .footer a {{ color: #667eea; text-decoration: none; }}
                     .footer a:hover {{ text-decoration: underline; }}
                     .social-links {{ margin-top: 15px; }}
