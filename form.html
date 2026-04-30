@@ -44,10 +44,11 @@
          
          ================================================================ -->
     
-    <!-- Cache-Busting Version: 2026-04-30-v7 (CRITICAL FIX: JS crash resolution with try/catch error handling) -->
-    <!-- Last Updated: 2026-04-30 02:58 UTC -->
-    <!-- Version Query Parameter: ?v=20260430025800 (MUST be appended to URL to bypass cache) -->
-    <!-- DEPLOYMENT: Update all form.html URLs to include ?v=20260430025800 -->
+    <!-- Cache-Busting Version: 2026-04-30-v8 (CRITICAL FIX: Persistent error logging + localStorage backup) -->
+    <!-- Last Updated: 2026-04-30 03:04 UTC -->
+    <!-- Version Query Parameter: ?v=20260430030400 (MUST be appended to URL to bypass cache) -->
+    <!-- DEPLOYMENT: Update all form.html URLs to include ?v=20260430030400 -->
+    <!-- ERROR RECOVERY: Check localStorage for 'form_submission_error' key if page redirects before errors display -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1069,6 +1070,21 @@
         async function handleSubmit(event) {
             event.preventDefault();
             
+            // CRITICAL FIX: Add persistent error logging before any navigation
+            window.onerror = function(msg, url, lineNo, columnNo, error) {
+                console.error('🔴 UNCAUGHT ERROR - Persisting to localStorage');
+                const errorLog = {
+                    timestamp: new Date().toISOString(),
+                    message: msg,
+                    line: lineNo,
+                    column: columnNo,
+                    stack: error ? error.stack : 'no stack trace'
+                };
+                localStorage.setItem('form_submission_error', JSON.stringify(errorLog));
+                console.error('Error logged to localStorage:', errorLog);
+                return true; // Prevent default error handling
+            };
+            
             const submitBtn = document.getElementById('submitBtn');
             const prevBtn = document.getElementById('prevBtn');
             const nextBtn = document.getElementById('nextBtn');
@@ -1163,6 +1179,21 @@
                         if (!totalPhotosElement) console.warn('⚠️  Missing: select[name="total_photos"]');
                         if (!marketingEmailElement) console.warn('⚠️  Missing: input[name="wants_marketing_emails"]');
                         
+                        // ULTRA-VERBOSE: Log each field as it's assembled
+                        console.log('🔧 ASSEMBLING PAYLOAD - FIELD BY FIELD:');
+                        console.log(`  1. email: ${email}`);
+                        console.log(`  2. property_name: ${propertyName}`);
+                        console.log(`  3. airbnb_url: ${airbnbUrlElement ? airbnbUrlElement.value : 'MISSING'}`);
+                        console.log(`  4. listing_type: ${listingTypeElement ? listingTypeElement.value : 'MISSING'}`);
+                        console.log(`  5. bedrooms: ${bedroomsElement ? bedroomsElement.value : 'MISSING'}`);
+                        console.log(`  6. bathrooms: ${bathroomsElement ? bathroomsElement.value : 'MISSING'}`);
+                        console.log(`  7. guest_capacity: ${guestCapacityElement ? guestCapacityElement.value : 'MISSING'}`);
+                        console.log(`  8. total_photos: ${totalPhotosElement ? totalPhotosElement.value : 'MISSING'}`);
+                        console.log(`  9. guest_comfort_checklist: ${JSON.stringify(comfortValues)}`);
+                        console.log(`  10. report_type: ${report_type}`);
+                        console.log(`  11. wants_marketing_emails: ${marketingEmailElement ? marketingEmailElement.checked : 'MISSING'}`);
+                        console.log(`  12. vision_results: null`);
+                        
                         const payload = {
                             email: email,
                             property_name: propertyName,
@@ -1178,7 +1209,8 @@
                             vision_results: null
                         };
                         
-                        console.log('📤 Payload assembly complete:', JSON.stringify(payload));
+                        console.log('✅ PAYLOAD ASSEMBLY SUCCESS');
+                        console.log('📤 Final payload:', JSON.stringify(payload));
                         
                         submitResponse = await fetch('/api/submit-form', {
                             method: 'POST',
@@ -1195,12 +1227,28 @@
                         submitResult = await submitResponse.json();
                         
                     } catch (payloadError) {
-                        console.error('🔴 PAYLOAD ASSEMBLY CRASH - Stack trace:');
-                        console.error(payloadError.message);
-                        console.error(payloadError.stack);
-                        showMessage(`❌ FORM ERROR: ${payloadError.message}. Please refresh and try again.`, 'error');
+                        // CRITICAL FIX: Persist error to localStorage so it survives navigation
+                        const errorDetails = {
+                            timestamp: new Date().toISOString(),
+                            phase: 'PAYLOAD_ASSEMBLY',
+                            message: payloadError.message,
+                            stack: payloadError.stack,
+                            name: payloadError.name
+                        };
+                        localStorage.setItem('form_submission_error', JSON.stringify(errorDetails));
+                        
+                        console.error('🔴🔴🔴 PAYLOAD ASSEMBLY CRASH 🔴🔴🔴');
+                        console.error('ERROR DETAILS:');
+                        console.error('  Name:', payloadError.name);
+                        console.error('  Message:', payloadError.message);
+                        console.error('  Stack:', payloadError.stack);
+                        console.error('SAVED TO LOCALSTORAGE:', errorDetails);
+                        
+                        showMessage(`❌ FORM ERROR: ${payloadError.message}. Please check browser console (F12) for details.`, 'error');
                         submitBtn.disabled = false;
                         hideLoading();
+                        
+                        // PREVENT NAVIGATION
                         return;
                     }
                     
@@ -1310,10 +1358,24 @@
                     console.log('📤 FormData assembly complete:', JSON.stringify(formData));
                     
                 } catch (dataError) {
-                    console.error('🔴 FORMDATA ASSEMBLY CRASH - Stack trace:');
-                    console.error(dataError.message);
-                    console.error(dataError.stack);
-                    showMessage(`❌ FORM ERROR: ${dataError.message}. Please refresh and try again.`, 'error');
+                    // CRITICAL FIX: Persist error to localStorage
+                    const errorDetails2 = {
+                        timestamp: new Date().toISOString(),
+                        phase: 'FORMDATA_ASSEMBLY',
+                        message: dataError.message,
+                        stack: dataError.stack,
+                        name: dataError.name
+                    };
+                    localStorage.setItem('form_submission_error', JSON.stringify(errorDetails2));
+                    
+                    console.error('🔴🔴🔴 FORMDATA ASSEMBLY CRASH 🔴🔴🔴');
+                    console.error('ERROR DETAILS:');
+                    console.error('  Name:', dataError.name);
+                    console.error('  Message:', dataError.message);
+                    console.error('  Stack:', dataError.stack);
+                    console.error('SAVED TO LOCALSTORAGE:', errorDetails2);
+                    
+                    showMessage(`❌ FORM ERROR: ${dataError.message}. Please check browser console (F12) for details.`, 'error');
                     submitBtn.disabled = false;
                     hideLoading();
                     return;
@@ -1731,10 +1793,25 @@
                     throw new Error(result.error || 'Analysis returned no vision results.');
                 }
             } catch (error) {
+                // CRITICAL FIX: Persist error to localStorage
+                const errorDetails3 = {
+                    timestamp: new Date().toISOString(),
+                    phase: 'PHOTO_ANALYSIS',
+                    message: error.message,
+                    stack: error.stack,
+                    name: error.name
+                };
+                localStorage.setItem('form_submission_error', JSON.stringify(errorDetails3));
+                
                 hideLoading();
-                console.error('❌ Photo analysis error:', error);
-                console.error('Error stack:', error.stack);
-                showMessage(`❌ Analysis failed: ${error.message}`, 'error');
+                console.error('🔴🔴🔴 PHOTO ANALYSIS CRASH 🔴🔴🔴');
+                console.error('ERROR DETAILS:');
+                console.error('  Name:', error.name);
+                console.error('  Message:', error.message);
+                console.error('  Stack:', error.stack);
+                console.error('SAVED TO LOCALSTORAGE:', errorDetails3);
+                
+                showMessage(`❌ Analysis failed: ${error.message}. Please check browser console (F12) for details.`, 'error');
                 analyzeBtn.disabled = false;
                 analyzeBtn.style.opacity = '1';
             }
