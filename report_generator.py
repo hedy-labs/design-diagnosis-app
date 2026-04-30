@@ -16,6 +16,26 @@ logger = logging.getLogger(__name__)
 class VitalityScorer:
     """92-Point Vitality Scoring System"""
     
+    # ALIAS MAPPING: Frontend items → Backend dictionary keys
+    # Handles pluralization, naming, and spacing mismatches
+    ALIAS_MAP = {
+        # Plurality fixes
+        "mattress_protector": "mattress_protectors",
+        "pillow_protector": "pillow_protectors",
+        # Naming fixes
+        "two_pillows": "two_pillows_per_guest",
+        "two_towels": "two_towels_per_guest",
+        "soap": "soap_dispenser",
+        "coat_hooks": "entry_hooks",
+        # Spacing fixes
+        "facecloths": "face_cloths",
+        # Missing items that need mapping
+        "drain_catcher": "drain_catcher",
+        "toilet_brush": "toilet_brush",
+        "kitchen_essentials": "kitchen_essentials",
+        "wifi": "wifi",
+    }
+    
     # Guest Comfort Checklist Items (42 points total)
     TIER_1_ITEMS = {
         "bedside_lamps": 3,
@@ -32,6 +52,8 @@ class VitalityScorer:
         "power_bars": 2,
         "dish_drying_rack": 2,
         "pillow_protectors": 2,
+        "drain_catcher": 2,
+        "toilet_brush": 2,
     }
     
     TIER_3_ITEMS = {
@@ -48,6 +70,8 @@ class VitalityScorer:
         "workspace": 1,
         "coffee_maker": 1,
         "can_opener": 1,
+        "kitchen_essentials": 1,
+        "wifi": 1,
     }
     
     def __init__(self):
@@ -55,13 +79,28 @@ class VitalityScorer:
     
     def _normalize_item_name(self, item: str) -> str:
         """
-        Normalize item name for matching.
+        Normalize item name for matching with ALIAS mapping.
         
-        Converts 'Bedside Tables' → 'bedside_tables'
-        Handles Title Case, UPPERCASE, and snake_case inputs
+        Step 1: Converts 'Bedside Tables' → 'bedside_tables'
+        Step 2: Checks ALIAS_MAP for known mismatches
+        Step 3: Returns canonical backend key name
+        
+        Examples:
+        - 'Bedside Tables' → 'bedside_tables' → returns 'bedside_tables'
+        - 'Mattress Protector' → 'mattress_protector' → ALIAS_MAP returns 'mattress_protectors'
+        - 'Two Pillows' → 'two_pillows' → ALIAS_MAP returns 'two_pillows_per_guest'
+        - 'Coat Hooks' → 'coat_hooks' → ALIAS_MAP returns 'entry_hooks'
         """
-        # Convert to lowercase and replace spaces/hyphens with underscores
+        # Step 1: Normalize format (lowercase + replace spaces/hyphens with underscores)
         normalized = item.lower().replace(' ', '_').replace('-', '_')
+        
+        # Step 2: Check ALIAS_MAP for known mismatches
+        if normalized in self.ALIAS_MAP:
+            canonical_key = self.ALIAS_MAP[normalized]
+            logger.info(f"   📍 ALIAS MAPPED: '{normalized}' → '{canonical_key}'")
+            return canonical_key
+        
+        # Step 3: Return normalized form (exact match expected)
         return normalized
     
     def calculate_guest_comfort_score(self, checklist: List[str]) -> int:
