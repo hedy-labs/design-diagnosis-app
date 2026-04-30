@@ -538,7 +538,10 @@ class ReportBuilder:
     
     def generate_analysis_text(self) -> str:
         """
-        Generate 'The Problem' narrative explaining the score.
+        Generate 'The Problem' narrative explaining the score (PAGE 1 SUMMARY).
+        
+        CRITICAL FIX: Use normalized missing_items (not raw comparison).
+        This ensures intro paragraph matches actual user selections.
         
         Returns: 2-3 paragraph analysis in Rachel's voice
         """
@@ -550,33 +553,49 @@ class ReportBuilder:
         design_score = self.vitality['design_score']
         checklist = self.submission.get('guest_comfort_checklist', [])
         
-        # Identify key missing items
-        all_items = set(VitalityScorer.TIER_1_ITEMS.keys()) | \
-                   set(VitalityScorer.TIER_2_ITEMS.keys()) | \
-                   set(VitalityScorer.TIER_3_ITEMS.keys())
-        missing = list(all_items - set(checklist))[:3]  # Top 3 missing items
+        # CRITICAL FIX: Use normalized _find_missing_items() instead of raw comparison
+        missing = self._find_missing_items(checklist)[:3]  # Top 3 missing items (normalized)
         
-        missing_text = ", ".join(missing) if missing else "various comfort items"
+        # Format missing items for display
+        if missing:
+            missing_text = ", ".join([clean_item_name(item) for item in missing])
+        else:
+            missing_text = None  # User has everything!
         
         # Grade-specific narrative
-        if score >= 90:
+        if score >= 95:
+            # PERFECT SCORE: All items present
+            intro = f"🎉 Perfect! {property_name} is move-in ready with every essential comfort item covered."
+            body = f"Your score of {score}/100 (Grade {grade}: {self.vitality['grade_label']}) shows you've created a beautiful, functional space with zero missing comfort essentials. Guests will find everything they need and more."
+            cta = "Your property is positioned for success. Focus on gathering guest reviews and maintaining consistency."
+        
+        elif score >= 90:
             intro = f"🎉 Excellent work! {property_name} is move-in ready and guest-focused. You've created a beautiful, functional space that guests will love."
             body = f"Your score of {score}/100 (Grade {grade}: {self.vitality['grade_label']}) reflects strong fundamentals across all dimensions. Minor polish opportunities remain, but your property is positioned for success."
             cta = "Focus on maintaining consistency and gathering guest reviews to build social proof."
         
         elif score >= 80:
             intro = f"👍 {property_name} has strong bones and good guest fundamentals. You're in the solid 'bookable' range with just a few intentional upgrades needed."
-            body = f"Your score of {score}/100 (Grade {grade}: {self.vitality['grade_label']}) shows you've covered most essentials. The missing {missing_text} are straightforward fixes that will significantly improve guest perception without major investment."
+            if missing_text:
+                body = f"Your score of {score}/100 (Grade {grade}: {self.vitality['grade_label']}) shows you've covered most essentials. The missing {missing_text} are straightforward fixes that will significantly improve guest perception without major investment."
+            else:
+                body = f"Your score of {score}/100 (Grade {grade}: {self.vitality['grade_label']}) shows you've covered all essentials. You have every comfort item—now it's about design refinement and consistency."
             cta = "Add the three high-impact fixes below and re-submit in 30 days for a rescoring."
         
         elif score >= 70:
             intro = f"⚠️ {property_name} has potential but needs strategic improvements. Right now, guests will notice gaps that signal 'rushed listing.'"
-            body = f"Your score of {score}/100 (Grade {grade}: {self.vitality['grade_label']}) reflects {missing_text} missing from guest-critical categories. These aren't cosmetic—they're the difference between a 4-star and 5-star experience. The good news: all are solvable with focused effort and modest budget."
+            if missing_text:
+                body = f"Your score of {score}/100 (Grade {grade}: {self.vitality['grade_label']}) reflects {missing_text} missing from guest-critical categories. These aren't cosmetic—they're the difference between a 4-star and 5-star experience. The good news: all are solvable with focused effort and modest budget."
+            else:
+                body = f"Your score of {score}/100 (Grade {grade}: {self.vitality['grade_label']}) shows you have all essential items but design improvements are needed. Focus on the fixes below to improve guest perception."
             cta = "Implement the three fixes below within 2 weeks and you'll move into the 'Strong' tier."
         
         else:  # Score < 70
             intro = f"🚨 {property_name} needs urgent attention to be competitive. Multiple critical gaps are creating 'guest friction points' that will harm bookings and reviews."
-            body = f"Your score of {score}/100 (Grade {grade}: {self.vitality['grade_label']}) shows significant work ahead, but this is fixable. The missing {missing_text} are foundational comfort signals. Once these are in place, design polish can follow."
+            if missing_text:
+                body = f"Your score of {score}/100 (Grade {grade}: {self.vitality['grade_label']}) shows significant work ahead, but this is fixable. The missing {missing_text} are foundational comfort signals. Once these are in place, design polish can follow."
+            else:
+                body = f"Your score of {score}/100 (Grade {grade}: {self.vitality['grade_label']}) shows you have the essential items but design quality needs urgent work. The fixes below will move you from 'needs improvement' to 'competitive.'"
             cta = "Prioritize the three critical fixes below over the next 30 days. Budget: $300–600."
         
         return f"{intro} {body} {cta}"
@@ -637,14 +656,21 @@ class ReportBuilder:
         """
         Generate structured shopping list by budget tier and category.
         
+        CRITICAL FIX: Use normalized _find_missing_items() for accurate shopping list.
+        If user has all items, returns empty list (Page 4 will show "No purchases required!")
+        
         Returns: List of {category, tier, items: [{name, price, url, why}]}
         """
-        # Identify missing items from checklist
+        # CRITICAL FIX: Use normalized _find_missing_items() instead of raw comparison
         checklist = self.submission.get('guest_comfort_checklist', [])
-        all_items = set(VitalityScorer.TIER_1_ITEMS.keys()) | \
-                   set(VitalityScorer.TIER_2_ITEMS.keys()) | \
-                   set(VitalityScorer.TIER_3_ITEMS.keys())
-        missing = list(all_items - set(checklist))
+        missing = self._find_missing_items(checklist)
+        
+        logger.info(f"🔍 SHOPPING LIST DEBUG: missing items count = {len(missing)}")
+        
+        # If user has everything, return empty list (Page 4 will be blank/hidden)
+        if not missing:
+            logger.info(f"🔍 SHOPPING LIST DEBUG: No missing items - returning empty list")
+            return []
         
         # Amazon affiliate base (to be populated with Rachel's ID)
         # For now, using placeholder URLs
