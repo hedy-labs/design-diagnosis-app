@@ -80,3 +80,88 @@ EXAMPLES:
 
 🔄 Correct mid-work ping:
 "Still working. Integrating Vision API into main.py. Will push within 3 minutes."
+
+---
+
+6. THE TELEMETRY & TRAPS RULE (JavaScript & Async Code)
+
+NEVER ALLOW SILENT FAILURES. When writing asynchronous code (form submissions, API calls, event handlers):
+
+MANDATORY PRACTICES:
+
+A) Prevent Automatic Navigation:
+   - ALWAYS use e.preventDefault() in form submission handlers
+   - Block window.location.href until async operations complete
+   - Example:
+     async function handleSubmit(event) {
+         event.preventDefault(); // ← MANDATORY
+         try {
+             const response = await fetch('/api/endpoint');
+             // Only navigate on success
+             window.location.href = '/success';
+         } catch (error) {
+             // Error logged before any navigation
+             console.error(error.stack);
+             return; // ← Prevents redirect
+         }
+     }
+
+B) Wrap Complex Logic in Strict try/catch:
+   - Every async operation gets a try/catch
+   - Every payload assembly gets a try/catch
+   - Every DOM selector that might be null gets a null check
+   - Example:
+     try {
+         const element = document.querySelector('[name="field"]');
+         if (!element) throw new Error('Missing form field');
+         const value = element.value;
+         // ... use value
+     } catch (error) {
+         console.error('FATAL:', error.message);
+         console.error('Stack:', error.stack);
+         return false; // Halt execution
+     }
+
+C) Log Visible Footprints:
+   - ALWAYS log success states: console.log('✅ Step complete')
+   - ALWAYS log exact error traces: console.error(error.stack)
+   - Use visual markers (🔴, ✅, 📤) so errors are impossible to miss
+   - Persist errors to localStorage in case of premature navigation
+   - Example:
+     try {
+         console.log('📤 Assembling payload...');
+         const payload = {...};
+         console.log('✅ Payload assembled:', JSON.stringify(payload));
+         const response = await fetch('/api/submit', { body: JSON.stringify(payload) });
+     } catch (error) {
+         console.error('🔴 FATAL ERROR:');
+         console.error('  Message:', error.message);
+         console.error('  Stack:', error.stack);
+         localStorage.setItem('last_error', JSON.stringify({message: error.message, stack: error.stack}));
+         return false;
+     }
+
+D) Never Assume Verification Without Proof:
+   - Do NOT claim a selector "works" without testing it
+   - Do NOT claim a form field "exists" without a null check
+   - Do NOT claim a payload "assembled correctly" without logging it
+   - Before finalizing code, ask: "Can I prove this works? Have I tested it?"
+   - Example:
+     ❌ WRONG: "I verified the selector works"
+     ✅ CORRECT: "I tested with console.log and confirmed querySelector returned the element"
+
+WHY THIS MATTERS:
+Silent failures are the hardest bugs to track. When async code crashes mid-operation before navigation, the error disappears. Users see a blank redirect. Developers see 0 comfort items (or empty data). The stack trace is never logged.
+
+This rule prevents that by:
+1. Blocking navigation until errors are logged
+2. Persisting errors to localStorage as a fallback
+3. Creating visible console footprints (so errors are never silent)
+4. Requiring proof of verification (no "I think it works")
+
+APPLIED RULES IN PRACTICE:
+- Every form submission has e.preventDefault()
+- Every payload assembly has try/catch + console logging
+- Every DOM selector has null checks
+- Every API call has error logging with stack traces
+- Every "completed" feature has an automated test or visible log proof
