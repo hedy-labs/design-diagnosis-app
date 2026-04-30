@@ -60,18 +60,41 @@ class VitalityScorer:
         checklist: List of item IDs that are present
         Returns: Points earned (0-42)
         """
+        # CRITICAL DEBUG LOGGING
+        logger.info(f"🔍 COMFORT SCORE DEBUG: checklist type = {type(checklist)}")
+        logger.info(f"🔍 COMFORT SCORE DEBUG: checklist = {checklist}")
+        logger.info(f"🔍 COMFORT SCORE DEBUG: checklist length = {len(checklist) if checklist else 0}")
+        
         points = 0
+        matched_items = []
+        unmatched_items = []
         
         for item in checklist:
+            logger.info(f"🔍 COMFORT SCORE DEBUG: checking item '{item}'")
             if item in self.TIER_1_ITEMS:
                 points += self.TIER_1_ITEMS[item]
+                matched_items.append((item, self.TIER_1_ITEMS[item], "TIER_1"))
+                logger.info(f"   ✅ MATCHED TIER_1: +{self.TIER_1_ITEMS[item]} points")
             elif item in self.TIER_2_ITEMS:
                 points += self.TIER_2_ITEMS[item]
+                matched_items.append((item, self.TIER_2_ITEMS[item], "TIER_2"))
+                logger.info(f"   ✅ MATCHED TIER_2: +{self.TIER_2_ITEMS[item]} points")
             elif item in self.TIER_3_ITEMS:
                 points += self.TIER_3_ITEMS[item]
+                matched_items.append((item, self.TIER_3_ITEMS[item], "TIER_3"))
+                logger.info(f"   ✅ MATCHED TIER_3: +{self.TIER_3_ITEMS[item]} points")
+            else:
+                unmatched_items.append(item)
+                logger.warning(f"   ❌ NO MATCH: '{item}' not found in any tier")
+        
+        logger.info(f"🔍 COMFORT SCORE DEBUG: matched items = {matched_items}")
+        logger.info(f"🔍 COMFORT SCORE DEBUG: unmatched items = {unmatched_items}")
+        logger.info(f"🔍 COMFORT SCORE DEBUG: total points = {points}")
         
         # Cap at 42
-        return min(points, 42)
+        final_score = min(points, 42)
+        logger.info(f"🔍 COMFORT SCORE DEBUG: final score = {final_score}")
+        return final_score
     
     def calculate_photo_score(self, total_photos) -> int:
         """
@@ -146,12 +169,22 @@ class VitalityScorer:
         
         Returns: (score, grade, summary)
         """
+        logger.info(f"🔍 VITALITY SCORE START: checklist = {guest_comfort_checklist}")
+        
         comfort_score = self.calculate_guest_comfort_score(guest_comfort_checklist)
+        logger.info(f"🔍 VITALITY SCORE: comfort_score = {comfort_score}/42")
+        
         photo_score = self.calculate_photo_score(total_photos)
+        logger.info(f"🔍 VITALITY SCORE: photo_score = {photo_score}/20")
+        
         design_score = self.calculate_design_score(design_factors or {})
+        logger.info(f"🔍 VITALITY SCORE: design_score = {design_score}/30")
         
         raw_score = comfort_score + photo_score + design_score
+        logger.info(f"🔍 VITALITY SCORE: raw_score = {raw_score}/{self.total_points}")
+        
         vitality_score = round((raw_score / self.total_points) * 100)
+        logger.info(f"🔍 VITALITY SCORE: final vitality_score = {vitality_score}/100")
         
         # Determine grade
         if vitality_score >= 90:

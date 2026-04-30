@@ -211,18 +211,44 @@ try:
         
         def calculate_score(self, guest_comfort_checklist: List[str], property_type: str):
             """Calculate score based on comfort checklist"""
-            # Convert comfort checklist to scoring dimensions
-            # This is a simplified mapping; in production, expand this logic
-            score = len(guest_comfort_checklist) * 4  # Each item = ~4 points
-            score = min(100, max(0, score))
-            grade = self.engine.assign_grade(score)
-            
-            return {'score': score, 'grade': grade}
+            try:
+                # CRITICAL LOGGING: Log inputs before calculation
+                logger.info(f"🔍 SCORING DEBUG: checklist type = {type(guest_comfort_checklist)}")
+                logger.info(f"🔍 SCORING DEBUG: checklist = {guest_comfort_checklist}")
+                logger.info(f"🔍 SCORING DEBUG: checklist length = {len(guest_comfort_checklist) if guest_comfort_checklist else 0}")
+                
+                # Convert comfort checklist to scoring dimensions
+                # This is a simplified mapping; in production, expand this logic
+                if not guest_comfort_checklist:
+                    score = 0
+                else:
+                    score = len(guest_comfort_checklist) * 4  # Each item = ~4 points
+                
+                logger.info(f"🔍 SCORING DEBUG: raw score = {score}")
+                
+                score = min(100, max(0, score))
+                logger.info(f"🔍 SCORING DEBUG: capped score = {score}")
+                
+                grade = self.engine.assign_grade(score)
+                logger.info(f"🔍 SCORING DEBUG: grade = {grade}")
+                
+                return {'score': score, 'grade': grade}
+            except Exception as e:
+                logger.error(f"🔴 SCORING CALCULATION ERROR: {e}")
+                logger.error(f"   Type: {type(e).__name__}")
+                logger.error(f"   Checklist: {guest_comfort_checklist}")
+                import traceback
+                logger.error(f"   Traceback: {traceback.format_exc()}")
+                # Re-raise so caller knows there was an error
+                raise
     
     scoring_engine = ProductionScoringEngine()
     logger.info("✅ Scoring engine initialized (PRODUCTION MODE)")
-except ImportError as e:
-    logger.warning(f"⚠️  Real scoring engine not available: {e}")
+except Exception as e:
+    logger.error(f"🔴 PRODUCTION SCORING ENGINE FAILED TO INITIALIZE: {e}")
+    logger.error(f"   Type: {type(e).__name__}")
+    import traceback
+    logger.error(f"   Traceback: {traceback.format_exc()}")
     logger.warning("⚠️  Falling back to mock mode")
     
     class MockScoringEngine:
