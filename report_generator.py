@@ -397,11 +397,13 @@ class ReportBuilder:
         return html
     
     def _generate_recommendations(self) -> List[Dict]:
-        """Generate recommendations based on missing comfort items"""
+        """Generate recommendations based on missing comfort items (FILTERED)"""
         
         recommendations = []
         comfort_checklist = self.submission.get('guest_comfort_checklist', [])
         missing_items = self._find_missing_items(comfort_checklist)
+        
+        logger.info(f"🔍 RECOMMENDATIONS DEBUG: missing_items count = {len(missing_items)}")
         
         # Tier 1 (Critical)
         tier1_missing = [item for item in missing_items if item in VitalityScorer.TIER_1_ITEMS]
@@ -413,6 +415,15 @@ class ReportBuilder:
                 'description': f"Add: {clean_names}. These directly impact guest satisfaction.",
                 'impact': 'High'
             })
+        else:
+            # DYNAMIC TEXT: All Tier 1 items present
+            if missing_items:  # But other items missing
+                recommendations.append({
+                    'priority': 'Critical',
+                    'title': '✅ Excellent! All Essential Items Present',
+                    'description': f"You've covered all critical comfort items. Focus on the high-impact additions below.",
+                    'impact': 'High'
+                })
         
         # Tier 2 (High Impact)
         tier2_missing = [item for item in missing_items if item in VitalityScorer.TIER_2_ITEMS]
@@ -424,6 +435,15 @@ class ReportBuilder:
                 'description': f"Add: {clean_names}. These improve guest experience.",
                 'impact': 'Medium'
             })
+        else:
+            # DYNAMIC TEXT: All Tier 2 items present
+            if not tier1_missing and missing_items:  # Tier 1 complete, but other items missing
+                recommendations.append({
+                    'priority': 'High',
+                    'title': '✅ Great! All Conveniences Covered',
+                    'description': f"You've added all important convenience items. The additions below are nice-to-have polish.",
+                    'impact': 'Medium'
+                })
         
         # Tier 3 (Nice to Have)
         tier3_missing = [item for item in missing_items if item in VitalityScorer.TIER_3_ITEMS]
@@ -435,6 +455,15 @@ class ReportBuilder:
                 'description': f"Consider adding: {clean_names}. These elevate the property.",
                 'impact': 'Low'
             })
+        else:
+            # DYNAMIC TEXT: All items present
+            if not tier1_missing and not tier2_missing:
+                recommendations.append({
+                    'priority': 'Nice to Have',
+                    'title': '🎉 PERFECT SCORE! All Items Present',
+                    'description': f"You have every single comfort item covered. Your property is move-in ready with no missing essentials.",
+                    'impact': 'Low'
+                })
         
         # Photo advice
         if self.vitality['photo_score'] < 15:
@@ -448,11 +477,33 @@ class ReportBuilder:
         return recommendations[:5]  # Top 5 recommendations
     
     def _find_missing_items(self, checklist: List[str]) -> List[str]:
-        """Find items not in the checklist"""
+        """
+        Find items not in the checklist.
+        
+        CRITICAL FIX: Normalize checklist items using same logic as scoring.
+        Converts 'Bedside Tables' → 'bedside_tables' → applies ALIAS_MAP.
+        """
+        # Normalize all checklist items (use same logic as scoring)
+        scorer = VitalityScorer()
+        normalized_checklist = set()
+        
+        for item in checklist:
+            normalized = scorer._normalize_item_name(item)
+            normalized_checklist.add(normalized)
+            logger.info(f"🔍 MISSING ITEMS DEBUG: checklist item '{item}' → normalized '{normalized}'")
+        
+        # All available items
         all_items = set(VitalityScorer.TIER_1_ITEMS.keys()) | \
                    set(VitalityScorer.TIER_2_ITEMS.keys()) | \
                    set(VitalityScorer.TIER_3_ITEMS.keys())
-        return list(all_items - set(checklist))
+        
+        # Find missing (items in all_items but NOT in normalized_checklist)
+        missing = list(all_items - normalized_checklist)
+        logger.info(f"🔍 MISSING ITEMS DEBUG: all_items = {len(all_items)}")
+        logger.info(f"🔍 MISSING ITEMS DEBUG: normalized_checklist = {len(normalized_checklist)}")
+        logger.info(f"🔍 MISSING ITEMS DEBUG: missing items = {missing}")
+        
+        return missing
     
     def _render_recommendations_html(self, recommendations: List[Dict]) -> str:
         """Render recommendations as HTML"""
