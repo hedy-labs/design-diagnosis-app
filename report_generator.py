@@ -53,11 +53,22 @@ class VitalityScorer:
     def __init__(self):
         self.total_points = 92
     
+    def _normalize_item_name(self, item: str) -> str:
+        """
+        Normalize item name for matching.
+        
+        Converts 'Bedside Tables' → 'bedside_tables'
+        Handles Title Case, UPPERCASE, and snake_case inputs
+        """
+        # Convert to lowercase and replace spaces/hyphens with underscores
+        normalized = item.lower().replace(' ', '_').replace('-', '_')
+        return normalized
+    
     def calculate_guest_comfort_score(self, checklist: List[str]) -> int:
         """
         Calculate guest comfort score from checklist items.
         
-        checklist: List of item IDs that are present
+        checklist: List of item IDs that are present (accepts Title Case or snake_case)
         Returns: Points earned (0-42)
         """
         # CRITICAL DEBUG LOGGING
@@ -70,22 +81,31 @@ class VitalityScorer:
         unmatched_items = []
         
         for item in checklist:
-            logger.info(f"🔍 COMFORT SCORE DEBUG: checking item '{item}'")
-            if item in self.TIER_1_ITEMS:
-                points += self.TIER_1_ITEMS[item]
-                matched_items.append((item, self.TIER_1_ITEMS[item], "TIER_1"))
-                logger.info(f"   ✅ MATCHED TIER_1: +{self.TIER_1_ITEMS[item]} points")
-            elif item in self.TIER_2_ITEMS:
-                points += self.TIER_2_ITEMS[item]
-                matched_items.append((item, self.TIER_2_ITEMS[item], "TIER_2"))
-                logger.info(f"   ✅ MATCHED TIER_2: +{self.TIER_2_ITEMS[item]} points")
-            elif item in self.TIER_3_ITEMS:
-                points += self.TIER_3_ITEMS[item]
-                matched_items.append((item, self.TIER_3_ITEMS[item], "TIER_3"))
-                logger.info(f"   ✅ MATCHED TIER_3: +{self.TIER_3_ITEMS[item]} points")
+            # STRING NORMALIZATION FIX: Normalize both the input and dictionary keys
+            normalized_item = self._normalize_item_name(item)
+            logger.info(f"🔍 COMFORT SCORE DEBUG: checking item '{item}' (normalized: '{normalized_item}')")
+            
+            if normalized_item in self.TIER_1_ITEMS:
+                item_points = self.TIER_1_ITEMS[normalized_item]
+                points += item_points
+                matched_items.append((item, item_points, "TIER_1"))
+                logger.info(f"   ✅ MATCHED TIER_1: +{item_points} points")
+            elif normalized_item in self.TIER_2_ITEMS:
+                item_points = self.TIER_2_ITEMS[normalized_item]
+                points += item_points
+                matched_items.append((item, item_points, "TIER_2"))
+                logger.info(f"   ✅ MATCHED TIER_2: +{item_points} points")
+            elif normalized_item in self.TIER_3_ITEMS:
+                item_points = self.TIER_3_ITEMS[normalized_item]
+                points += item_points
+                matched_items.append((item, item_points, "TIER_3"))
+                logger.info(f"   ✅ MATCHED TIER_3: +{item_points} points")
             else:
                 unmatched_items.append(item)
-                logger.warning(f"   ❌ NO MATCH: '{item}' not found in any tier")
+                logger.warning(f"   ❌ NO MATCH: '{item}' (normalized: '{normalized_item}') not found in any tier")
+                logger.warning(f"      Available TIER_1 keys: {list(self.TIER_1_ITEMS.keys())}")
+                logger.warning(f"      Available TIER_2 keys: {list(self.TIER_2_ITEMS.keys())}")
+                logger.warning(f"      Available TIER_3 keys: {list(self.TIER_3_ITEMS.keys())}")
         
         logger.info(f"🔍 COMFORT SCORE DEBUG: matched items = {matched_items}")
         logger.info(f"🔍 COMFORT SCORE DEBUG: unmatched items = {unmatched_items}")
