@@ -44,10 +44,10 @@
          
          ================================================================ -->
     
-    <!-- Cache-Busting Version: 2026-04-30-v11 (CRITICAL FIX: API contract mismatch - deferred analysis) -->
-    <!-- Last Updated: 2026-04-30 04:42 UTC -->
-    <!-- Version Query Parameter: ?v=20260430044200 (MUST be appended to URL to bypass cache) -->
-    <!-- DEPLOYMENT: Update all form.html URLs to include ?v=20260430044200 -->
+    <!-- Cache-Busting Version: 2026-04-30-v12 (CRITICAL FIX: FastAPI tuple trap - array response handling) -->
+    <!-- Last Updated: 2026-04-30 04:48 UTC -->
+    <!-- Version Query Parameter: ?v=20260430044800 (MUST be appended to URL to bypass cache) -->
+    <!-- DEPLOYMENT: Update all form.html URLs to include ?v=20260430044800 -->
     <!-- ERROR RECOVERY: Check localStorage for 'form_submission_error' key if page redirects before errors display -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
@@ -909,10 +909,19 @@
                                 throw new Error(error.error || 'Photo upload failed');
                             }
                             
-                            const uploadResult = await uploadResponse.json();
-                            console.log('📦 Upload response:', uploadResult);
+                            let uploadResult = await uploadResponse.json();
+                            console.log('📦 Upload response (raw):', uploadResult);
                             
-                            if (uploadResult.success) {
+                            // CRITICAL FIX: FastAPI tuple trap
+                            // FastAPI returns (dict, status_code) as JSON array [dict, code]
+                            // Extract the actual response object if it's wrapped
+                            if (Array.isArray(uploadResult)) {
+                                console.log('⚠️  TUPLE TRAP: Response is array, extracting data object');
+                                uploadResult = uploadResult[0];
+                                console.log('📦 Upload response (extracted):', uploadResult);
+                            }
+                            
+                            if (uploadResult && uploadResult.success) {
                                 // Backend defers Vision AI analysis until form submission
                                 // Store what we got, even if analysis results are null
                                 window._uploadedVisionResults = uploadResult.vision_results || null;
@@ -925,7 +934,7 @@
                                     console.log(`✅ Photos uploaded successfully (${uploadResult.file_count} files saved, analysis deferred to form submission)`);
                                 }
                             } else {
-                                throw new Error(uploadResult.error || 'Photo analysis failed');
+                                throw new Error((uploadResult && uploadResult.error) || 'Photo analysis failed');
                             }
                         } catch (err) {
                             console.error('❌ Photo upload error:', err);
@@ -1238,6 +1247,12 @@
                         
                         submitResult = await submitResponse.json();
                         
+                        // CRITICAL FIX: FastAPI tuple trap - handle array response
+                        if (Array.isArray(submitResult)) {
+                            console.log('⚠️  TUPLE TRAP: Submit response is array, extracting data');
+                            submitResult = submitResult[0];
+                        }
+                        
                     } catch (payloadError) {
                         // CRITICAL FIX: Persist error to localStorage so it survives navigation
                         const errorDetails = {
@@ -1297,7 +1312,15 @@
                         throw new Error(`Checkout failed: ${errorBody.detail || errorBody.message || checkoutResponse.status}`);
                     }
                     
-                    const { session_id, url } = await checkoutResponse.json();
+                    let checkoutResult = await checkoutResponse.json();
+                    
+                    // CRITICAL FIX: FastAPI tuple trap
+                    if (Array.isArray(checkoutResult)) {
+                        console.log('⚠️  TUPLE TRAP: Checkout response is array, extracting data');
+                        checkoutResult = checkoutResult[0];
+                    }
+                    
+                    const { session_id, url } = checkoutResult;
                     console.log(`✅ Stripe session: ${session_id}`);
                     console.log(`🔗 Redirecting to: ${url}`);
                     hideLoading();
@@ -1419,8 +1442,13 @@
                     });
                     
                     if (visionResponse.ok) {
-                        const visionData = await visionResponse.json();
-                        if (visionData.success) {
+                        let visionData = await visionResponse.json();
+                        // CRITICAL FIX: FastAPI tuple trap
+                        if (Array.isArray(visionData)) {
+                            console.log('⚠️  TUPLE TRAP: Vision response is array, extracting data');
+                            visionData = visionData[0];
+                        }
+                        if (visionData && visionData.success) {
                             formData.vision_results = visionData.vision_results;
                             showMessage('✅ Property analysis complete. Submitting form...', 'loading');
                         } else {
@@ -1490,9 +1518,15 @@
                         body: JSON.stringify(formData)
                     });
                     
-                    const submitResult = await submitResponse.json();
+                    let submitResult = await submitResponse.json();
                     
-                    if (!submitResult.success) {
+                    // CRITICAL FIX: FastAPI tuple trap
+                    if (Array.isArray(submitResult)) {
+                        console.log('⚠️  TUPLE TRAP: Submit response is array, extracting data');
+                        submitResult = submitResult[0];
+                    }
+                    
+                    if (!submitResult || !submitResult.success) {
                         showMessage(`❌ Form submission error: ${submitResult.message}`, 'error');
                         submitBtn.disabled = false;
                         return;
@@ -1509,9 +1543,15 @@
                         })
                     });
                     
-                    const checkoutResult = await checkoutResponse.json();
+                    let checkoutResult = await checkoutResponse.json();
                     
-                    if (checkoutResult.success) {
+                    // CRITICAL FIX: FastAPI tuple trap
+                    if (Array.isArray(checkoutResult)) {
+                        console.log('⚠️  TUPLE TRAP: Checkout response is array, extracting data');
+                        checkoutResult = checkoutResult[0];
+                    }
+                    
+                    if (checkoutResult && checkoutResult.success) {
                         // Redirect to Stripe Checkout
                         showMessage('🔄 Redirecting to secure payment...', 'loading');
                         window.location.href = checkoutResult.client_secret;
@@ -1683,8 +1723,15 @@
                         throw new Error(`Submission failed: ${errorBody.message || tempSubmitResponse.status}`);
                     }
                     
-                    const submitResult = await tempSubmitResponse.json();
-                    console.log(`✅ Temporary submission created: ${submitResult.submission_id}`);
+                    let submitResult = await tempSubmitResponse.json();
+                    
+                    // CRITICAL FIX: FastAPI tuple trap
+                    if (Array.isArray(submitResult)) {
+                        console.log('⚠️  TUPLE TRAP: Submit response is array, extracting data');
+                        submitResult = submitResult[0];
+                    }
+                    
+                    console.log(`✅ Temporary submission created: ${submitResult && submitResult.submission_id}`);
                     
                     // Now create payment intent with submission_id
                     console.log('💳 Creating Stripe checkout session...');
@@ -1703,7 +1750,15 @@
                         throw new Error(`Checkout failed: ${errorBody.detail || errorBody.message || checkoutResponse.status}`);
                     }
                     
-                    const { session_id, url } = await checkoutResponse.json();
+                    let checkoutData = await checkoutResponse.json();
+                    
+                    // CRITICAL FIX: FastAPI tuple trap
+                    if (Array.isArray(checkoutData)) {
+                        console.log('⚠️  TUPLE TRAP: Checkout response is array, extracting data');
+                        checkoutData = checkoutData[0];
+                    }
+                    
+                    const { session_id, url } = checkoutData;
                     console.log(`✅ Stripe session created: ${session_id}`);
                     console.log(`🔗 Redirecting to: ${url}`);
                     
