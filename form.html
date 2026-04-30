@@ -44,10 +44,10 @@
          
          ================================================================ -->
     
-    <!-- Cache-Busting Version: 2026-04-30-v10 (CRITICAL FIX: Missing closing brace in changeStep) -->
-    <!-- Last Updated: 2026-04-30 04:26 UTC -->
-    <!-- Version Query Parameter: ?v=20260430042600 (MUST be appended to URL to bypass cache) -->
-    <!-- DEPLOYMENT: Update all form.html URLs to include ?v=20260430042600 -->
+    <!-- Cache-Busting Version: 2026-04-30-v11 (CRITICAL FIX: API contract mismatch - deferred analysis) -->
+    <!-- Last Updated: 2026-04-30 04:42 UTC -->
+    <!-- Version Query Parameter: ?v=20260430044200 (MUST be appended to URL to bypass cache) -->
+    <!-- DEPLOYMENT: Update all form.html URLs to include ?v=20260430044200 -->
     <!-- ERROR RECOVERY: Check localStorage for 'form_submission_error' key if page redirects before errors display -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
@@ -910,10 +910,20 @@
                             }
                             
                             const uploadResult = await uploadResponse.json();
+                            console.log('📦 Upload response:', uploadResult);
+                            
                             if (uploadResult.success) {
-                                console.log('✅ Photos uploaded and analyzed');
-                                window._uploadedVisionResults = uploadResult.vision_results;
-                                window._uploadedPhotoPaths = uploadResult.temp_photo_paths;
+                                // Backend defers Vision AI analysis until form submission
+                                // Store what we got, even if analysis results are null
+                                window._uploadedVisionResults = uploadResult.vision_results || null;
+                                window._uploadedPhotoPaths = uploadResult.temp_photo_paths || null;
+                                window._uploadedPhotoCount = uploadResult.file_count || 0;
+                                
+                                if (uploadResult.vision_results) {
+                                    console.log('✅ Photos uploaded and analyzed immediately');
+                                } else {
+                                    console.log(`✅ Photos uploaded successfully (${uploadResult.file_count} files saved, analysis deferred to form submission)`);
+                                }
                             } else {
                                 throw new Error(uploadResult.error || 'Photo analysis failed');
                             }
