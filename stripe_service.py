@@ -92,13 +92,13 @@ class StripeService:
                 line_items=[
                     {
                         "price_data": {
-                            "currency": "usd",
+                            "currency": "cad",
                             "product_data": {
                                 "name": "Design Diagnosis Premium Report",
                                 "description": f"Complete design analysis for: {property_name}",
                                 "images": [],  # Optional: add logo URL here
                             },
-                            "unit_amount": 3900,  # $39.00 in cents
+                            "unit_amount": 3900,  # $39.00 CAD in cents
                         },
                         "quantity": 1,
                     }
