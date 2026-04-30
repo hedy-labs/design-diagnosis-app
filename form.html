@@ -44,9 +44,10 @@
          
          ================================================================ -->
     
-    <!-- Cache-Busting Version: 2026-04-29-v6 (ultimate frontend patch: data leak fix, loading wheel, popups, progress bar) -->
-    <!-- Last Updated: 2026-04-29 13:57 UTC -->
-    <!-- Version Query Parameter: ?v=20260429135700 (MUST be appended to URL to bypass cache) -->
+    <!-- Cache-Busting Version: 2026-04-30-v7 (CRITICAL FIX: JS crash resolution with try/catch error handling) -->
+    <!-- Last Updated: 2026-04-30 02:58 UTC -->
+    <!-- Version Query Parameter: ?v=20260430025800 (MUST be appended to URL to bypass cache) -->
+    <!-- DEPLOYMENT: Update all form.html URLs to include ?v=20260430025800 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1124,47 +1125,94 @@
                     console.log('⏳ Creating submission for payment processing...');
                     showLoading('Creating your submission...');
                     
-                    // PATCH 1: Debug comfort checkbox collection with improved selectors
-                    const comfortCheckboxes = document.querySelectorAll('input[type="checkbox"][name="comfort"]:checked');
-                    const comfortValues = Array.from(comfortCheckboxes).map(cb => cb.value);
-                    console.log(`🔍 FRONTEND DEBUG (Stripe Path): Found ${comfortCheckboxes.length} checked comfort items`);
-                    console.log(`   Values: ${JSON.stringify(comfortValues)}`);
+                    // FIX 1: Wrap entire payload assembly in try/catch to catch selector crashes
+                    let submitResponse;
+                    let submitResult;
                     
-                    // Fallback selector if primary fails
-                    if (comfortCheckboxes.length === 0) {
-                        console.warn('⚠️  WARNING: Primary selector found 0 items, trying fallback...');
-                        console.warn('   Primary selector: input[type="checkbox"][name="comfort"]:checked');
-                        const fallbackCheckboxes = document.querySelectorAll('input[name="comfort"]');
-                        console.warn(`   Total comfort checkboxes on page: ${fallbackCheckboxes.length}`);
-                        console.warn(`   Checked (via form.elements): ${Array.from(fallbackCheckboxes).filter(cb => cb.checked).length}`);
-                    }
-                    
-                    const submitResponse = await fetch('/api/submit-form', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
+                    try {
+                        // PATCH 1: Debug comfort checkbox collection with improved selectors
+                        const comfortCheckboxes = document.querySelectorAll('input[type="checkbox"][name="comfort"]:checked');
+                        const comfortValues = Array.from(comfortCheckboxes).map(cb => cb.value);
+                        console.log(`🔍 FRONTEND DEBUG (Stripe Path): Found ${comfortCheckboxes.length} checked comfort items`);
+                        console.log(`   Values: ${JSON.stringify(comfortValues)}`);
+                        
+                        // Fallback selector if primary fails
+                        if (comfortCheckboxes.length === 0) {
+                            console.warn('⚠️  WARNING: Primary selector found 0 items, trying fallback...');
+                            console.warn('   Primary selector: input[type="checkbox"][name="comfort"]:checked');
+                            const fallbackCheckboxes = document.querySelectorAll('input[name="comfort"]');
+                            console.warn(`   Total comfort checkboxes on page: ${fallbackCheckboxes.length}`);
+                            console.warn(`   Checked (via form.elements): ${Array.from(fallbackCheckboxes).filter(cb => cb.checked).length}`);
+                        }
+                        
+                        // FIX 2: Safely query all form fields with null checks
+                        const airbnbUrlElement = document.querySelector('input[name="airbnb_url"]');
+                        const listingTypeElement = document.querySelector('select[name="listing_type"]');
+                        const bedroomsElement = document.querySelector('select[name="bedrooms"]');
+                        const bathroomsElement = document.querySelector('select[name="bathrooms"]');
+                        const guestCapacityElement = document.querySelector('select[name="guest_capacity"]');
+                        const totalPhotosElement = document.querySelector('select[name="total_photos"]');
+                        const marketingEmailElement = document.querySelector('input[name="wants_marketing_emails"]');
+                        
+                        // Log any missing elements
+                        if (!airbnbUrlElement) console.warn('⚠️  Missing: input[name="airbnb_url"]');
+                        if (!listingTypeElement) console.warn('⚠️  Missing: select[name="listing_type"]');
+                        if (!bedroomsElement) console.warn('⚠️  Missing: select[name="bedrooms"]');
+                        if (!bathroomsElement) console.warn('⚠️  Missing: select[name="bathrooms"]');
+                        if (!guestCapacityElement) console.warn('⚠️  Missing: select[name="guest_capacity"]');
+                        if (!totalPhotosElement) console.warn('⚠️  Missing: select[name="total_photos"]');
+                        if (!marketingEmailElement) console.warn('⚠️  Missing: input[name="wants_marketing_emails"]');
+                        
+                        const payload = {
                             email: email,
                             property_name: propertyName,
-                            airbnb_url: document.querySelector('input[name="airbnb_url"]').value || null,
-                            listing_type: document.querySelector('select[name="listing_type"]').value,
-                            bedrooms: parseInt(document.querySelector('select[name="bedrooms"]').value),
-                            bathrooms: parseInt(document.querySelector('select[name="bathrooms"]').value),
-                            guest_capacity: parseInt(document.querySelector('select[name="guest_capacity"]').value),
-                            total_photos: document.querySelector('select[name="total_photos"]').value,
+                            airbnb_url: airbnbUrlElement ? (airbnbUrlElement.value || null) : null,
+                            listing_type: listingTypeElement ? listingTypeElement.value : '',
+                            bedrooms: bedroomsElement ? parseInt(bedroomsElement.value) : 0,
+                            bathrooms: bathroomsElement ? parseInt(bathroomsElement.value) : 0,
+                            guest_capacity: guestCapacityElement ? parseInt(guestCapacityElement.value) : 0,
+                            total_photos: totalPhotosElement ? totalPhotosElement.value : '',
                             guest_comfort_checklist: comfortValues,
                             report_type: report_type,
-                            wants_marketing_emails: document.querySelector('input[name="wants_marketing_emails"]').checked,
+                            wants_marketing_emails: marketingEmailElement ? marketingEmailElement.checked : false,
                             vision_results: null
-                        })
-                    });
-                    
-                    if (!submitResponse.ok) {
-                        const errorBody = await submitResponse.json();
-                        console.error('❌ Submit failed:', errorBody);
-                        throw new Error(`Form submission failed: ${errorBody.message || submitResponse.status}`);
+                        };
+                        
+                        console.log('📤 Payload assembly complete:', JSON.stringify(payload));
+                        
+                        submitResponse = await fetch('/api/submit-form', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        
+                        if (!submitResponse.ok) {
+                            const errorBody = await submitResponse.json();
+                            console.error('❌ Submit failed:', errorBody);
+                            throw new Error(`Form submission failed: ${errorBody.message || submitResponse.status}`);
+                        }
+                        
+                        submitResult = await submitResponse.json();
+                        
+                    } catch (payloadError) {
+                        console.error('🔴 PAYLOAD ASSEMBLY CRASH - Stack trace:');
+                        console.error(payloadError.message);
+                        console.error(payloadError.stack);
+                        showMessage(`❌ FORM ERROR: ${payloadError.message}. Please refresh and try again.`, 'error');
+                        submitBtn.disabled = false;
+                        hideLoading();
+                        return;
                     }
                     
-                    const submitResult = await submitResponse.json();
+                    // FIX 3: Check if submission was successful before proceeding
+                    if (!submitResult || !submitResult.submission_id) {
+                        console.error('❌ No submission_id returned from server');
+                        showMessage('❌ Submission failed. Please try again.', 'error');
+                        submitBtn.disabled = false;
+                        hideLoading();
+                        return;
+                    }
+                    
                     const submissionId = submitResult.submission_id;
                     console.log(`✅ Submission created: ${submissionId}`);
                     
@@ -1219,27 +1267,57 @@
                 // Show loading spinner and disable button
                 showMessage('⏳ Analyzing property photos. This AI evaluation may take 10-15 seconds...', 'loading');
                 
-                // PATCH 1: Debug comfort checkbox collection with improved selectors
-                const comfortCheckboxes2 = document.querySelectorAll('input[type="checkbox"][name="comfort"]:checked');
-                const comfortValues2 = Array.from(comfortCheckboxes2).map(cb => cb.value);
-                console.log(`🔍 FRONTEND DEBUG (Free Report Path): Found ${comfortCheckboxes2.length} checked comfort items`);
-                console.log(`   Values: ${JSON.stringify(comfortValues2)}`);
-                
-                const formData = {
-                    email: email,
-                    property_name: property_name,
-                    airbnb_url: photo_source && photo_source.value === 'airbnb_url' ? airbnb_url : null,
-                    listing_type: document.querySelector('select[name="listing_type"]').value,
-                    bedrooms: parseInt(document.querySelector('select[name="bedrooms"]').value),
-                    bathrooms: parseInt(document.querySelector('select[name="bathrooms"]').value),
-                    guest_capacity: parseInt(document.querySelector('select[name="guest_capacity"]').value),
-                    total_photos: document.querySelector('select[name="total_photos"]').value,
-                    guest_comfort_checklist: comfortValues2,
-                    report_type: report_type,
-                    wants_marketing_emails: document.querySelector('input[name="wants_marketing_emails"]').checked,
-                    // Include uploaded vision results if they exist (from manual upload)
-                    vision_results: window._uploadedVisionResults || null
-                };
+                // FIX 1: Wrap formData assembly in try/catch
+                let formData;
+                try {
+                    // PATCH 1: Debug comfort checkbox collection with improved selectors
+                    const comfortCheckboxes2 = document.querySelectorAll('input[type="checkbox"][name="comfort"]:checked');
+                    const comfortValues2 = Array.from(comfortCheckboxes2).map(cb => cb.value);
+                    console.log(`🔍 FRONTEND DEBUG (Free Report Path): Found ${comfortCheckboxes2.length} checked comfort items`);
+                    console.log(`   Values: ${JSON.stringify(comfortValues2)}`);
+                    
+                    // FIX 2: Safely query all form fields with null checks
+                    const listingTypeElement2 = document.querySelector('select[name="listing_type"]');
+                    const bedroomsElement2 = document.querySelector('select[name="bedrooms"]');
+                    const bathroomsElement2 = document.querySelector('select[name="bathrooms"]');
+                    const guestCapacityElement2 = document.querySelector('select[name="guest_capacity"]');
+                    const totalPhotosElement2 = document.querySelector('select[name="total_photos"]');
+                    const marketingEmailElement2 = document.querySelector('input[name="wants_marketing_emails"]');
+                    
+                    if (!listingTypeElement2) console.warn('⚠️  Missing: select[name="listing_type"]');
+                    if (!bedroomsElement2) console.warn('⚠️  Missing: select[name="bedrooms"]');
+                    if (!bathroomsElement2) console.warn('⚠️  Missing: select[name="bathrooms"]');
+                    if (!guestCapacityElement2) console.warn('⚠️  Missing: select[name="guest_capacity"]');
+                    if (!totalPhotosElement2) console.warn('⚠️  Missing: select[name="total_photos"]');
+                    if (!marketingEmailElement2) console.warn('⚠️  Missing: input[name="wants_marketing_emails"]');
+                    
+                    formData = {
+                        email: email,
+                        property_name: property_name,
+                        airbnb_url: photo_source && photo_source.value === 'airbnb_url' ? airbnb_url : null,
+                        listing_type: listingTypeElement2 ? listingTypeElement2.value : '',
+                        bedrooms: bedroomsElement2 ? parseInt(bedroomsElement2.value) : 0,
+                        bathrooms: bathroomsElement2 ? parseInt(bathroomsElement2.value) : 0,
+                        guest_capacity: guestCapacityElement2 ? parseInt(guestCapacityElement2.value) : 0,
+                        total_photos: totalPhotosElement2 ? totalPhotosElement2.value : '',
+                        guest_comfort_checklist: comfortValues2,
+                        report_type: report_type,
+                        wants_marketing_emails: marketingEmailElement2 ? marketingEmailElement2.checked : false,
+                        // Include uploaded vision results if they exist (from manual upload)
+                        vision_results: window._uploadedVisionResults || null
+                    };
+                    
+                    console.log('📤 FormData assembly complete:', JSON.stringify(formData));
+                    
+                } catch (dataError) {
+                    console.error('🔴 FORMDATA ASSEMBLY CRASH - Stack trace:');
+                    console.error(dataError.message);
+                    console.error(dataError.stack);
+                    showMessage(`❌ FORM ERROR: ${dataError.message}. Please refresh and try again.`, 'error');
+                    submitBtn.disabled = false;
+                    hideLoading();
+                    return;
+                }
                 
                 // Validation based on photo source
                 if (photo_source && photo_source.value === 'airbnb_url') {
@@ -1476,18 +1554,35 @@
                 console.log(`Property: ${propertyName}, Email: ${email}`);
                 console.log('⏳ Creating temporary submission for payment...');
                 
-                // PATCH 1: Debug comfort checkbox collection with improved selectors
-                const comfortCheckboxes3 = document.querySelectorAll('input[type="checkbox"][name="comfort"]:checked');
-                const comfortValues3 = Array.from(comfortCheckboxes3).map(cb => cb.value);
-                console.log(`🔍 FRONTEND DEBUG (Manual Upload Path): Found ${comfortCheckboxes3.length} checked comfort items`);
-                console.log(`   Values: ${JSON.stringify(comfortValues3)}`);
-                if (comfortCheckboxes3.length === 0) {
-                    console.warn('⚠️  WARNING: No comfort checkboxes detected as checked!');
-                    console.warn('   This will result in 0/42 comfort score');
-                    console.warn(`   Total checkboxes found: ${document.querySelectorAll('input[name="comfort"]').length}`);
-                }
-                
+                // FIX 1: Wrap payload assembly in try/catch
                 try {
+                    // PATCH 1: Debug comfort checkbox collection with improved selectors
+                    const comfortCheckboxes3 = document.querySelectorAll('input[type="checkbox"][name="comfort"]:checked');
+                    const comfortValues3 = Array.from(comfortCheckboxes3).map(cb => cb.value);
+                    console.log(`🔍 FRONTEND DEBUG (Manual Upload Path): Found ${comfortCheckboxes3.length} checked comfort items`);
+                    console.log(`   Values: ${JSON.stringify(comfortValues3)}`);
+                    if (comfortCheckboxes3.length === 0) {
+                        console.warn('⚠️  WARNING: No comfort checkboxes detected as checked!');
+                        console.warn('   This will result in 0/42 comfort score');
+                        console.warn(`   Total checkboxes found: ${document.querySelectorAll('input[name="comfort"]').length}`);
+                    }
+                    
+                    // FIX 2: Safely query all form fields with null checks
+                    const airbnbUrlElement3 = document.querySelector('input[name="airbnb_url"]');
+                    const listingTypeElement3 = document.querySelector('select[name="listing_type"]');
+                    const bedroomsElement3 = document.querySelector('select[name="bedrooms"]');
+                    const bathroomsElement3 = document.querySelector('select[name="bathrooms"]');
+                    const guestCapacityElement3 = document.querySelector('select[name="guest_capacity"]');
+                    const totalPhotosElement3 = document.querySelector('select[name="total_photos"]');
+                    const marketingEmailElement3 = document.querySelector('input[name="wants_marketing_emails"]');
+                    
+                    if (!listingTypeElement3) console.warn('⚠️  Missing: select[name="listing_type"]');
+                    if (!bedroomsElement3) console.warn('⚠️  Missing: select[name="bedrooms"]');
+                    if (!bathroomsElement3) console.warn('⚠️  Missing: select[name="bathrooms"]');
+                    if (!guestCapacityElement3) console.warn('⚠️  Missing: select[name="guest_capacity"]');
+                    if (!totalPhotosElement3) console.warn('⚠️  Missing: select[name="total_photos"]');
+                    if (!marketingEmailElement3) console.warn('⚠️  Missing: input[name="wants_marketing_emails"]');
+                    
                     // Create temporary submission to get submission_id
                     const tempSubmitResponse = await fetch('/api/submit-form', {
                         method: 'POST',
@@ -1495,15 +1590,15 @@
                         body: JSON.stringify({
                             email: email,
                             property_name: propertyName,
-                            airbnb_url: document.querySelector('input[name="airbnb_url"]').value || null,
-                            listing_type: document.querySelector('select[name="listing_type"]').value,
-                            bedrooms: parseInt(document.querySelector('select[name="bedrooms"]').value),
-                            bathrooms: parseInt(document.querySelector('select[name="bathrooms"]').value),
-                            guest_capacity: parseInt(document.querySelector('select[name="guest_capacity"]').value),
-                            total_photos: document.querySelector('select[name="total_photos"]').value,
+                            airbnb_url: airbnbUrlElement3 ? (airbnbUrlElement3.value || null) : null,
+                            listing_type: listingTypeElement3 ? listingTypeElement3.value : '',
+                            bedrooms: bedroomsElement3 ? parseInt(bedroomsElement3.value) : 0,
+                            bathrooms: bathroomsElement3 ? parseInt(bathroomsElement3.value) : 0,
+                            guest_capacity: guestCapacityElement3 ? parseInt(guestCapacityElement3.value) : 0,
+                            total_photos: totalPhotosElement3 ? totalPhotosElement3.value : '',
                             guest_comfort_checklist: comfortValues3,
                             report_type: reportType,
-                            wants_marketing_emails: document.querySelector('input[name="wants_marketing_emails"]').checked,
+                            wants_marketing_emails: marketingEmailElement3 ? marketingEmailElement3.checked : false,
                             vision_results: window._uploadedVisionResults || null
                         })
                     });
@@ -1542,9 +1637,12 @@
                     window.location.href = url;
                     return;
                 } catch (error) {
-                    console.error('❌ Premium payment flow error:', error);
-                    console.error('   Stack:', error.stack);
-                    showMessage(`❌ Payment system error: ${error.message}`, 'error');
+                    console.error('🔴 PAYMENT FLOW CRASH - Stack trace:');
+                    console.error('Message:', error.message);
+                    console.error('Stack:', error.stack);
+                    showMessage(`❌ Payment system error: ${error.message}. Please try again or contact support.`, 'error');
+                    submitBtn.disabled = false;
+                    hideLoading();
                     return;
                 }
             }
