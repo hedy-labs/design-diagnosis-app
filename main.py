@@ -541,20 +541,31 @@ async def submit_form(form_data: FormSubmitInput, background_tasks: BackgroundTa
         
         logger.info(f"📝 Form submission from {form_data.email} for {form_data.property_name}")
         
-        # Validate: Airbnb URL is required
-        if not form_data.airbnb_url or not form_data.airbnb_url.strip():
-            raise HTTPException(
-                status_code=400,
-                detail="Airbnb/VRBO URL is required. Please provide your listing URL."
-            )
+        # BACKEND VALIDATION FIX: Allow manual uploads without URL
+        # Check if photos were manually uploaded
+        temp_upload_dir = os.path.join(UPLOADED_PHOTOS_DIR, "temp_uploads")
+        has_manually_uploaded_photos = False
+        if os.path.exists(temp_upload_dir):
+            temp_files = [f for f in os.listdir(temp_upload_dir) if os.path.isfile(os.path.join(temp_upload_dir, f))]
+            has_manually_uploaded_photos = len(temp_files) > 0
         
-        # Validate: URL contains airbnb or vrbo
-        url_lower = form_data.airbnb_url.lower()
-        if 'airbnb' not in url_lower and 'vrbo' not in url_lower:
-            raise HTTPException(
-                status_code=400,
-                detail="Please enter a valid Airbnb or VRBO listing URL."
-            )
+        # Validate: Airbnb URL is required ONLY if no manual upload
+        if not has_manually_uploaded_photos:
+            if not form_data.airbnb_url or not form_data.airbnb_url.strip():
+                raise HTTPException(
+                    status_code=400,
+                    detail="Airbnb/VRBO URL is required. Please provide your listing URL or upload photos manually."
+                )
+            
+            # Validate: URL contains airbnb or vrbo
+            url_lower = form_data.airbnb_url.lower()
+            if 'airbnb' not in url_lower and 'vrbo' not in url_lower:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Please enter a valid Airbnb or VRBO listing URL."
+                )
+        else:
+            logger.info(f"✅ Manual photo upload detected ({len(temp_files)} files) - Airbnb URL not required")
         
         # Check if user is already verified (zero-friction return)
         user = db.get_or_create_user(form_data.email, wants_marketing=form_data.wants_marketing_emails)
