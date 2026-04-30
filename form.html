@@ -44,10 +44,10 @@
          
          ================================================================ -->
     
-    <!-- Cache-Busting Version: 2026-04-30-v8 (CRITICAL FIX: Persistent error logging + localStorage backup) -->
-    <!-- Last Updated: 2026-04-30 03:04 UTC -->
-    <!-- Version Query Parameter: ?v=20260430030400 (MUST be appended to URL to bypass cache) -->
-    <!-- DEPLOYMENT: Update all form.html URLs to include ?v=20260430030400 -->
+    <!-- Cache-Busting Version: 2026-04-30-v9 (CRITICAL FIX: async/await syntax error in changeStep) -->
+    <!-- Last Updated: 2026-04-30 03:42 UTC -->
+    <!-- Version Query Parameter: ?v=20260430034200 (MUST be appended to URL to bypass cache) -->
+    <!-- DEPLOYMENT: Update all form.html URLs to include ?v=20260430034200 -->
     <!-- ERROR RECOVERY: Check localStorage for 'form_submission_error' key if page redirects before errors display -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
@@ -843,8 +843,9 @@
             document.querySelector('.container').scrollTop = 0;
         }
         
-        function changeStep(direction) {
+        async function changeStep(direction) {
             // Validate before moving forward
+            // CRITICAL FIX: Made async to support await in photo upload logic
             if (direction > 0) {
                 if (currentStep === 1) {
                     // Validate Step 1 - with photo source handling
