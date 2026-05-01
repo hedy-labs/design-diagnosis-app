@@ -1366,6 +1366,7 @@
                 const property_name = document.querySelector('input[name="property_name"]').value;
                 const email = document.querySelector('input[name="email"]').value;
                 const airbnb_url = document.querySelector('input[name="airbnb_url"]').value || null;
+                const photo_source = document.querySelector('input[name="photo_source"]:checked');
                 
                 // Show loading spinner and disable button
                 showMessage('⏳ Analyzing property photos. This AI evaluation may take 10-15 seconds...', 'loading');
