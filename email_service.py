@@ -27,6 +27,8 @@ class EmailService:
         self.api_key = os.getenv("SENDGRID_API_KEY")
         # Use Rachel's trusted sender email
         self.from_email = os.getenv("SENDGRID_FROM_EMAIL", "rachellabelles@gmail.com")
+        # Dynamic base URL (supports both IP testing and production domains)
+        self.base_url = os.getenv("BASE_URL", "https://roomsbyrachel.ca")
         # Brand links
         self.website_url = "https://roomsbyrachel.ca"
         self.instagram_url = "https://www.instagram.com/roomsbyrachel.ca"
@@ -684,8 +686,19 @@ class EmailService:
             all_comfort_items = set(VitalityScorer.TIER_1_ITEMS.keys()) | \
                                set(VitalityScorer.TIER_2_ITEMS.keys()) | \
                                set(VitalityScorer.TIER_3_ITEMS.keys())
-            missing_items = [item for item in all_comfort_items if item not in guest_comfort_checklist]
-        except:
+            
+            # Normalize frontend items using same ALIAS_MAP as backend
+            alias_map = VitalityScorer.ALIAS_MAP
+            normalized_checklist = set()
+            for item in guest_comfort_checklist:
+                # Apply alias if exists, otherwise use item as-is
+                normalized_item = alias_map.get(item, item)
+                normalized_checklist.add(normalized_item)
+            
+            # Compute missing against normalized checklist
+            missing_items = [item for item in all_comfort_items if item not in normalized_checklist]
+        except Exception as e:
+            print(f"[EMAIL] ⚠️  Missing items computation error: {e}")
             missing_items = []
         
         if not missing_items:
@@ -721,11 +734,11 @@ class EmailService:
     def _get_upgrade_checkout_full_url(self, submission_id: int = None) -> str:
         """
         Generate full URL to upgrade checkout endpoint
-        Backend will create Stripe session and redirect to checkout
+        Uses dynamic BASE_URL for both testing and production
         """
         if submission_id:
-            # Construct absolute URL with domain
-            return f"https://design-diagnosis.roomsbyrachel.ca/api/upgrade-checkout/{submission_id}"
+            # Use BASE_URL environment variable (IP or domain)
+            return f"{self.base_url}/api/upgrade-checkout/{submission_id}"
         else:
             return f"{self.website_url}/premium"
 
