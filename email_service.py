@@ -28,7 +28,9 @@ class EmailService:
         # Use Rachel's trusted sender email
         self.from_email = os.getenv("SENDGRID_FROM_EMAIL", "rachellabelles@gmail.com")
         # Dynamic base URL (supports both IP testing and production domains)
-        self.base_url = os.getenv("BASE_URL", "https://roomsbyrachel.ca")
+        # TEMPORARY: Force IP for testing (will revert to os.getenv after verification)
+        self.base_url = "http://147.182.247.168:8000"
+        logger.info(f"[EMAIL] BASE_URL forced to: {self.base_url}")
         # Brand links
         self.website_url = "https://roomsbyrachel.ca"
         self.instagram_url = "https://www.instagram.com/roomsbyrachel.ca"
@@ -523,6 +525,11 @@ class EmailService:
             print(f"[EMAIL] 📧 Sending FREE VITALITY REPORT to {email}")
             print(f"[EMAIL]    Score: {vitality_score}/100, Grade: {grade}")
             print(f"[EMAIL]    Top fixes: {len(top_fixes)} items")
+            print(f"[EMAIL]    Submission ID: {submission_id}")
+            if submission_id:
+                upgrade_url = self._get_upgrade_checkout_full_url(submission_id)
+                print(f"[EMAIL]    Upgrade URL in email: {upgrade_url}")
+                logger.info(f"[EMAIL] Upgrade URL for submission {submission_id}: {upgrade_url}")
             
             if self.mode == "LIVE":
                 message = Mail(
@@ -738,9 +745,15 @@ class EmailService:
         """
         if submission_id:
             # Use BASE_URL environment variable (IP or domain)
-            return f"{self.base_url}/api/upgrade-checkout/{submission_id}"
+            url = f"{self.base_url}/api/upgrade-checkout/{submission_id}"
+            logger.info(f"[EMAIL] Generated upgrade URL: {url}")
+            print(f"[EMAIL] Generated upgrade URL: {url}")
+            return url
         else:
-            return f"{self.website_url}/premium"
+            fallback_url = f"{self.website_url}/premium"
+            logger.info(f"[EMAIL] No submission_id, using fallback: {fallback_url}")
+            print(f"[EMAIL] No submission_id, using fallback: {fallback_url}")
+            return fallback_url
 
     def _get_stripe_checkout_url(self, submission_id: int = None) -> str:
         """
