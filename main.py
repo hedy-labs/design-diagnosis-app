@@ -1104,10 +1104,9 @@ async def upgrade_checkout(submission_id: int):
         
         # Create Stripe checkout session for $39 CAD premium PDF
         session = stripe_service.create_checkout_session(
-            customer_email=submission.email,
-            property_name=submission.property_name,
             submission_id=submission_id,
-            report_type="premium_upgrade"  # Mark as upgrade, not new
+            property_name=submission.property_name,
+            customer_email=submission.email
         )
         
         print(f"[CHECKOUT] ✅ Checkout session created: {session.id}")
