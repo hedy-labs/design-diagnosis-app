@@ -1134,9 +1134,9 @@
             const report_type = document.querySelector('input[name="report_type"]:checked').value;
             console.log(`Form submission - Report type: ${report_type}`);
             
-            // If Premium and no manual upload vision results, require Stripe payment
-            if (report_type === 'premium' && !window._uploadedVisionResults) {
-                console.log('🔴 Premium tier, no prior payment - checking out with Stripe');
+            // If Premium, require Stripe payment (unless already paid via manual upload)
+            if (report_type === 'premium') {
+                console.log('🔴 Premium tier - checking out with Stripe');
                 const propertyName = document.querySelector('input[name="property_name"]').value;
                 const email = document.querySelector('input[name="email"]').value;
                 
@@ -1446,12 +1446,9 @@
                         return;
                     }
                 } else if (photo_source && photo_source.value === 'manual_upload') {
-                    // Manual upload path - photos already uploaded
-                    if (!window._uploadedVisionResults) {
-                        showMessage('❌ Photos were not analyzed. Please try uploading again.', 'error');
-                        submitBtn.disabled = false;
-                        return;
-                    }
+                    // Manual upload path - photos already uploaded to temp folder
+                    // NOTE: Vision AI is deferred to background task (no need to check vision_results here)
+                    console.log('✅ Manual upload selected - proceeding to submit (Vision AI deferred to backend)');
                 }
                 
                 try {
