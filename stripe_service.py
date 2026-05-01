@@ -113,11 +113,11 @@ class StripeService:
                 },
             )
             
-            logger.info(f"✅ Checkout session created: {session.id}")
+            logger.info(f"✅ Checkout session created: {session['id']}")
             
             return {
-                "session_id": session.id,
-                "checkout_url": session.url,
+                "session_id": session['id'],
+                "checkout_url": session['url'],
                 "mode": "LIVE"
             }
         
