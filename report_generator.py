@@ -29,6 +29,9 @@ class VitalityScorer:
         "coat_hooks": "entry_hooks",
         # Spacing fixes
         "facecloths": "face_cloths",
+        # New expanded items (May 2026)
+        "dish_soap_sponge": "dish_soap",
+        "shoe_rack_bench": "shoe_rack",
         # Missing items that need mapping
         "drain_catcher": "drain_catcher",
         "toilet_brush": "toilet_brush",
@@ -45,6 +48,8 @@ class VitalityScorer:
         "plunger": 3,
         "soap_dispenser": 3,
         "mattress_protectors": 3,
+        "toilet_paper": 3,  # NEW (May 2026): Critical bathroom essential
+        "dish_soap": 3,     # NEW (May 2026): Critical kitchen essential
     }
     
     TIER_2_ITEMS = {
@@ -54,6 +59,8 @@ class VitalityScorer:
         "pillow_protectors": 2,
         "drain_catcher": 2,
         "toilet_brush": 2,
+        "kettle": 2,         # NEW (May 2026): Convenience item for guests
+        "dish_towels": 2,    # NEW (May 2026): Convenience item for kitchen
     }
     
     TIER_3_ITEMS = {
