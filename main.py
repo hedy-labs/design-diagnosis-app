@@ -1074,7 +1074,7 @@ async def email_verified():
     return HTMLResponse("<h1>❌ Verified page not found</h1>", status_code=404)
 
 
-@app.post("/api/upgrade-checkout/{submission_id}")
+@app.get("/api/upgrade-checkout/{submission_id}")
 async def upgrade_checkout(submission_id: int):
     """
     Generate Stripe checkout session for free → premium upgrade
