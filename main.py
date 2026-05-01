@@ -5,7 +5,7 @@ Flat directory structure. All imports from root level only.
 """
 
 from fastapi import FastAPI, HTTPException, Query, Request, BackgroundTasks
-from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Optional
@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 import logging
 import shutil
+import stripe
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -1088,9 +1089,12 @@ async def upgrade_checkout(submission_id: int):
     try:
         print(f"[CHECKOUT] Upgrade request for submission_id={submission_id}")
         
-        # Verify submission exists
-        db = SessionLocal()
-        submission = db.query(FormSubmission).filter(FormSubmission.id == submission_id).first()
+        # Verify submission exists using database method
+        if not db:
+            print(f"[CHECKOUT] ❌ Database not initialized")
+            return {"success": False, "error": "Database error"}
+        
+        submission = db.get_form_submission(submission_id)
         
         if not submission:
             print(f"[CHECKOUT] ❌ Submission {submission_id} not found")
