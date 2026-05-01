@@ -1451,6 +1451,9 @@
                     console.log('✅ Manual upload selected - proceeding to submit (Vision AI deferred to backend)');
                 }
                 
+                // Only analyze listing if photo source is Airbnb URL
+                // Skip for manual uploads (backend handles deferred analysis)
+                if (photo_source && photo_source.value === 'airbnb_url') {
                 try {
                     const visionResponse = await fetch('/api/analyze-listing', {
                         method: 'POST',
@@ -1500,6 +1503,7 @@
                     submitBtn.disabled = false;
                     return;
                 }
+                } // END: Only analyze if photo_source is airbnb_url
                 
                 // Different flows for Free vs Premium
                 if (report_type === 'free') {
@@ -1849,14 +1853,16 @@
                 const result = await response.json();
                 console.log('Response JSON:', result);
                 
-                if (result.success && result.vision_results) {
-                    console.log('✅ Analysis successful, storing vision results...');
-                    // Store vision results for form submission
-                    window._uploadedVisionResults = result.vision_results;
-                    console.log('Vision results stored:', result.vision_results);
+                if (result.success) {
+                    console.log('✅ Photos uploaded successfully to backend');
+                    // Store temp folder ID for form submission
+                    // NOTE: Vision AI is deferred - backend will analyze in background
+                    window._uploadedTempFolderId = result.temp_folder_id || null;
+                    console.log('Temp folder ID stored:', window._uploadedTempFolderId);
+                    console.log('Vision AI is deferred to backend - no need to wait for results');
                     
                     hideLoading();
-                    showMessage('✅ Photo analysis complete! Proceeding to final step...', 'success');
+                    showMessage('✅ Photos uploaded! Proceeding to final step...', 'success');
                     console.log('Hiding fallback, showing step 3...');
                     document.getElementById('photoFallback').style.display = 'none';
                     
@@ -1875,7 +1881,7 @@
                     console.log('Ready for form submission');
                 } else {
                     hideLoading();
-                    throw new Error(result.error || 'Analysis returned no vision results.');
+                    throw new Error(result.error || 'Photo upload failed.');
                 }
             } catch (error) {
                 // CRITICAL FIX: Persist error to localStorage
