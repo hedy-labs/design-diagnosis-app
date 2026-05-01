@@ -605,13 +605,17 @@ class ReportBuilder:
     
     def generate_top_three_fixes(self) -> List[Dict]:
         """
-        Generate top 3 highest-impact, most-urgent fixes with costs.
+        Generate top 3 ACTIONABLE fixes with real costs.
         
-        Returns: List of {title, description, cost_low, cost_high, impact}
+        CRITICAL: NEVER use "Perfect Score" as a fix. Always return real improvements.
+        If user has high comfort, recommend DESIGN and PHOTO improvements instead.
+        
+        Returns: List of {priority, title, description, cost_low, cost_high, impact, roi}
         """
-        recommendations = self._generate_recommendations()[:3]  # Top 3 by priority
+        checklist = self.submission.get('guest_comfort_checklist', [])
+        missing_items = self._find_missing_items(checklist)
         
-        # Enrich with cost data
+        # Cost lookup for items
         cost_lookup = {
             'bedside_lamps': (60, 150),
             'bedside_tables': (80, 200),
@@ -625,35 +629,106 @@ class ReportBuilder:
             'desk_chair': (100, 300),
             'sofa_side_tables': (100, 250),
             'power_bars': (25, 60),
+            'hangers': (30, 100),
+            'pillow_protectors': (40, 100),
+            'extra_blanket': (50, 150),
         }
         
         fixes = []
-        for i, rec in enumerate(recommendations, 1):
-            # Extract item from description if possible
-            title = rec['title']
-            description = rec['description']
-            
-            # Estimate cost (default range)
-            cost_low = 100
-            cost_high = 300
-            
-            # Try to match known items for better cost estimates
-            for item, (low, high) in cost_lookup.items():
-                if item.replace('_', ' ') in description.lower():
-                    cost_low, cost_high = low, high
-                    break
-            
+        
+        # PRIORITY 1: COMFORT - Critical missing items FIRST
+        tier1_missing = [item for item in missing_items if item in VitalityScorer.TIER_1_ITEMS]
+        if tier1_missing:
+            item = tier1_missing[0]  # Pick first critical missing item
+            clean_name = clean_item_name(item)
+            cost_low, cost_high = cost_lookup.get(item, (80, 200))
             fixes.append({
-                'priority': i,
-                'title': title,
-                'description': description,
+                'priority': 1,
+                'title': f'Add {clean_name}',
+                'description': f'{clean_name} is a critical comfort signal. Guests expect this, and its absence damages perception.',
                 'cost_low': cost_low,
                 'cost_high': cost_high,
-                'impact': rec.get('impact', 'High'),
-                'roi': '15-25% booking increase'  # Standard ROI for professional staging
+                'impact': 'Critical',
+                'roi': '20-30% booking lift'
             })
         
-        return fixes
+        # PRIORITY 2: High-impact comfort if Tier 1 complete, otherwise second critical item
+        if len(fixes) == 1 and len(tier1_missing) > 1:
+            # Second critical item
+            item = tier1_missing[1]
+            clean_name = clean_item_name(item)
+            cost_low, cost_high = cost_lookup.get(item, (80, 200))
+            fixes.append({
+                'priority': 2,
+                'title': f'Add {clean_name}',
+                'description': f'Complete the critical comfort set with {clean_name.lower()}. These items work together.',
+                'cost_low': cost_low,
+                'cost_high': cost_high,
+                'impact': 'High',
+                'roi': '15-20% booking lift'
+            })
+        else:
+            # If no Tier 1 missing, add Tier 2 convenience
+            tier2_missing = [item for item in missing_items if item in VitalityScorer.TIER_2_ITEMS]
+            if tier2_missing:
+                item = tier2_missing[0]
+                clean_name = clean_item_name(item)
+                cost_low, cost_high = cost_lookup.get(item, (50, 150))
+                fixes.append({
+                    'priority': 2,
+                    'title': f'Add {clean_name}',
+                    'description': f'{clean_name} improves the guest experience and reduces friction. Shows attentiveness to detail.',
+                    'cost_low': cost_low,
+                    'cost_high': cost_high,
+                    'impact': 'High',
+                    'roi': '10-15% booking lift'
+                })
+        
+        # PRIORITY 3: Photo/Design improvement OR remaining comfort item
+        if self.vitality.get('photo_score', 0) < 15:
+            # Photo quality is weak
+            fixes.append({
+                'priority': 3,
+                'title': 'Professional Photography',
+                'description': 'High-quality photos increase bookings by 15-25%. Guests book based on what they see.',
+                'cost_low': 300,
+                'cost_high': 600,
+                'impact': 'High',
+                'roi': '15-25% booking lift'
+            })
+        else:
+            # Photos are good, recommend design improvement or remaining comfort
+            tier3_missing = [item for item in missing_items if item in VitalityScorer.TIER_3_ITEMS]
+            if tier3_missing:
+                item = tier3_missing[0]
+                clean_name = clean_item_name(item)
+                cost_low, cost_high = cost_lookup.get(item, (30, 100))
+                fixes.append({
+                    'priority': 3,
+                    'title': f'Polish: Add {clean_name}',
+                    'description': f'{clean_name} elevates the perceived quality. Small investment, noticeable impact.',
+                    'cost_low': cost_low,
+                    'cost_high': cost_high,
+                    'impact': 'Medium',
+                    'roi': '5-10% booking lift'
+                })
+            else:
+                # All comfort items present - recommend design/staging
+                fixes.append({
+                    'priority': 3,
+                    'title': 'Design Staging Review',
+                    'description': 'All essential items present. Now focus on cohesive design, lighting, and color coordination.',
+                    'cost_low': 500,
+                    'cost_high': 2000,
+                    'impact': 'Medium',
+                    'roi': '10-15% booking lift + better reviews'
+                })
+        
+        logger.info(f"🔍 TOP 3 FIXES DEBUG: Generated {len(fixes)} fixes")
+        for fix in fixes:
+            logger.info(f"   Fix #{fix['priority']}: {fix['title']} (${fix['cost_low']}–${fix['cost_high']})")
+        
+        return fixes[:3]  # Return top 3
     
     def generate_shopping_list(self) -> List[Dict]:
         """

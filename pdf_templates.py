@@ -457,8 +457,11 @@ class PDFTemplates:
                 
                 <div class="score-card">
                     <div class="score">{vitality_score}</div>
-                    <div class="grade">Grade {grade}</div>
+                    <div class="grade">Vitality Grade {grade} ({vitality_score}%)</div>
                     <div class="description">{grade_description}</div>
+                    <div class="raw-points" style="margin-top: 15px; font-size: 14px; color: #667eea;">
+                        Raw Score: {comfort_score + photo_score + design_score}/92 points
+                    </div>
                 </div>
                 
                 <div class="section">
