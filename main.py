@@ -1072,6 +1072,15 @@ async def payment_success(session_id: str = Query(None), background_tasks: Backg
     return HTMLResponse("<h1>❌ Success page not found</h1>", status_code=404)
 
 
+@app.get("/payment-success.html", response_class=HTMLResponse)
+async def payment_success_html(session_id: str = Query(None), background_tasks: BackgroundTasks = None):
+    """
+    Serve payment success page at /payment-success.html (alias for /payment-success)
+    Handles Stripe redirects that may append .html extension
+    """
+    return await payment_success(session_id=session_id, background_tasks=background_tasks)
+
+
 @app.get("/email-verified", response_class=HTMLResponse)
 async def email_verified():
     """Serve the email verified confirmation page"""
