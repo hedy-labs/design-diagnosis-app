@@ -1397,7 +1397,7 @@
                     formData = {
                         email: email,
                         property_name: property_name,
-                        airbnb_url: photo_source && photo_source.value === 'airbnb_url' ? airbnb_url : null,
+                        airbnb_url: null,  // FREE TIER: Always null for free reports (no URL required)
                         listing_type: listingTypeElement2 ? listingTypeElement2.value : '',
                         bedrooms: bedroomsElement2 ? parseInt(bedroomsElement2.value) : 0,
                         bathrooms: bathroomsElement2 ? parseInt(bathroomsElement2.value) : 0,
