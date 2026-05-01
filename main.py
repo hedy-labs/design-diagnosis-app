@@ -1116,11 +1116,12 @@ async def upgrade_checkout(submission_id: int):
             cancel_url=cancel_url
         )
         
-        print(f"[CHECKOUT] ✅ Checkout session created: {session.id}")
+        print(f"[CHECKOUT] ✅ Checkout session created: {session['session_id']}")
+        print(f"[CHECKOUT] Redirecting to: {session['checkout_url']}")
         
         # Redirect directly to Stripe checkout
         from fastapi.responses import RedirectResponse
-        return RedirectResponse(url=session.url)
+        return RedirectResponse(url=session['checkout_url'])
     
     except Exception as e:
         print(f"[CHECKOUT] ❌ Checkout creation failed: {e}")
