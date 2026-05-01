@@ -1105,7 +1105,7 @@ async def upgrade_checkout(submission_id: int):
         # Create Stripe checkout session for $39 CAD premium PDF
         # Construct redirect URLs using forced IP (http://147.182.247.168:8000)
         base_url = "http://147.182.247.168:8000"  # Matches forced IP in email_service.py
-        success_url = f"{base_url}/payment-success.html?session_id={{CHECKOUT_SESSION_ID}}"
+        success_url = f"{base_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}"
         cancel_url = f"{base_url}/form.html"
         
         session = stripe_service.create_checkout_session(
