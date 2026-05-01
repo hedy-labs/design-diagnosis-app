@@ -1074,6 +1074,50 @@ async def email_verified():
     return HTMLResponse("<h1>❌ Verified page not found</h1>", status_code=404)
 
 
+@app.post("/api/upgrade-checkout/{submission_id}")
+async def upgrade_checkout(submission_id: int):
+    """
+    Generate Stripe checkout session for free → premium upgrade
+    
+    Args:
+        submission_id: ID of existing free tier submission
+    
+    Returns:
+        Stripe checkout session URL (redirect user to checkout.stripe.com/pay/...)
+    """
+    try:
+        print(f"[CHECKOUT] Upgrade request for submission_id={submission_id}")
+        
+        # Verify submission exists
+        db = SessionLocal()
+        submission = db.query(FormSubmission).filter(FormSubmission.id == submission_id).first()
+        
+        if not submission:
+            print(f"[CHECKOUT] ❌ Submission {submission_id} not found")
+            return {"success": False, "error": "Submission not found"}
+        
+        print(f"[CHECKOUT] Found submission for {submission.email}")
+        
+        # Create Stripe checkout session for $39 CAD premium PDF
+        session = stripe_service.create_checkout_session(
+            customer_email=submission.email,
+            property_name=submission.property_name,
+            submission_id=submission_id,
+            report_type="premium_upgrade"  # Mark as upgrade, not new
+        )
+        
+        print(f"[CHECKOUT] ✅ Checkout session created: {session.id}")
+        
+        # Redirect directly to Stripe checkout
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url=session.url)
+    
+    except Exception as e:
+        print(f"[CHECKOUT] ❌ Checkout creation failed: {e}")
+        logger.error(f"Upgrade checkout error: {e}")
+        return {"success": False, "error": str(e)}
+
+
 @app.get("/payment-cancelled", response_class=HTMLResponse)
 async def payment_cancelled(session_id: str = Query(None)):
     """Handle cancelled Stripe payment"""
@@ -1419,7 +1463,8 @@ async def generate_and_send_report(submission_id: int, report_type: str):
                         top_fixes=top_fixes,  # REDACTED in template
                         property_name=submission.property_name,
                         submission_id=submission_id,  # For Stripe checkout link
-                        unchecked_items=unchecked_items  # Show as baseline fixes
+                        unchecked_items=unchecked_items,  # Show as baseline fixes (deprecated)
+                        guest_comfort_checklist=submission.guest_comfort_checklist  # Dynamic missing items
                     )
                     print(f"[REPORT]    ✅ FREE vitality email sent (AI fixes REDACTED, baseline fixes shown)")
                     logger.info(f"✅ FREE vitality report sent to {submission.email} (redacted)")

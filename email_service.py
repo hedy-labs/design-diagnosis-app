@@ -384,7 +384,7 @@ class EmailService:
             logger.error(f"❌ SendGrid send error: {e}")
             raise
     
-    def send_free_vitality_report(self, email: str, vitality_score: int, grade: str, top_fixes: list, property_name: str = "Your Property", submission_id: int = None, unchecked_items: list = None):
+    def send_free_vitality_report(self, email: str, vitality_score: int, grade: str, top_fixes: list, property_name: str = "Your Property", submission_id: int = None, unchecked_items: list = None, guest_comfort_checklist: list = None):
         """
         PHASE 4: Send Free Tier Vitality Report Email (REDACTED)
         
@@ -473,17 +473,14 @@ class EmailService:
                         
                         <div class="fixes-section">
                             <h3>📋 Essential Baseline Fixes (Free Preview)</h3>
-                            <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
-                                Start with these foundational guest experience improvements:
-                            </p>
-                            {self._render_utility_fixes_html(unchecked_items)}
+                            {self._render_baseline_fixes_section(vitality_score, guest_comfort_checklist)}
                         </div>
                         
                         <div style="text-align: center; margin: 40px 0;">
                             <p style="font-size: 16px; font-weight: bold; color: #333; margin-bottom: 15px;">
                                 Ready to unlock your custom design strategy?
                             </p>
-                            <a href="{self._get_stripe_checkout_url(submission_id)}" class="cta-button" style="background: #d32f2f; font-size: 18px; padding: 18px 40px;">
+                            <a href="{self._get_upgrade_checkout_full_url(submission_id)}" class="cta-button" style="background: #d32f2f; font-size: 18px; padding: 18px 40px;">
                                 🔓 Unlock My 8-Page Spatial Diagnosis PDF ($39)
                             </a>
                             <p style="font-size: 12px; color: #999; margin-top: 5px;">
@@ -603,12 +600,30 @@ class EmailService:
             </div>
         """
     
-    def _render_utility_fixes_html(self, unchecked_items: list = None) -> str:
+    def _render_baseline_fixes_section(self, vitality_score: int, guest_comfort_checklist: list = None) -> str:
         """
-        Render 2-3 static utility fixes from unchecked checklist items
-        These are basic baseline improvements, not the premium AI analysis
+        Render baseline fixes section: dynamic message if perfect, else show missing items
         """
-        # Map unchecked items to guest experience language
+        # Perfect score: show congratulatory message
+        if vitality_score >= 95 and guest_comfort_checklist:
+            return """
+            <p style="color: #388e3c; font-size: 16px; font-weight: bold; margin-bottom: 15px;">
+                ✅ Your comfort baseline is perfect!
+            </p>
+            <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                You've covered all essential guest comfort items. Your property has a strong foundation.
+                Upgrade to Premium to see how Photo Quality and Design aesthetics can further boost your bookings.
+            </p>
+            """
+        
+        # Not perfect: show missing items
+        return self._render_utility_fixes_html(guest_comfort_checklist)
+    
+    def _render_utility_fixes_html(self, guest_comfort_checklist: list = None) -> str:
+        """
+        Render 2-3 missing comfort items as utility fixes
+        """
+        # Map ALL comfort items to guest experience language
         utility_fixes_library = {
             'powerBars': {
                 'title': 'Add Power Bars',
@@ -660,17 +675,31 @@ class EmailService:
             },
         }
         
-        if not unchecked_items or len(unchecked_items) == 0:
-            # Default fallback if no unchecked items provided
-            unchecked_items = ['plunger', 'bedLamps', 'hangers']
+        if not guest_comfort_checklist:
+            guest_comfort_checklist = []
         
-        # Take first 2-3 unchecked items
-        selected_items = unchecked_items[:3]
+        # Import VitalityScorer to get the actual comfort items
+        try:
+            from report_generator import VitalityScorer
+            all_comfort_items = set(VitalityScorer.TIER_1_ITEMS.keys()) | \
+                               set(VitalityScorer.TIER_2_ITEMS.keys()) | \
+                               set(VitalityScorer.TIER_3_ITEMS.keys())
+            missing_items = [item for item in all_comfort_items if item not in guest_comfort_checklist]
+        except:
+            missing_items = []
+        
+        if not missing_items:
+            missing_items = []
+        
+        # Take first 2-3 missing items
+        selected_items = missing_items[:3]
         
         utility_html = ""
         for idx, item_key in enumerate(selected_items, 1):
-            fix_info = utility_fixes_library.get(item_key, {
-                'title': f'Missing Guest Amenity',
+            # Convert snake_case to camelCase for library lookup
+            camel_key = ''.join(word.capitalize() if i > 0 else word for i, word in enumerate(item_key.split('_')))
+            fix_info = utility_fixes_library.get(camel_key, {
+                'title': f'Add {item_key.replace("_", " ").title()}',
                 'rationale': 'Guests expect this item. Adding it will improve their experience and your ratings.'
             })
             
@@ -688,13 +717,27 @@ class EmailService:
         
         return utility_html
     
-    def _get_stripe_checkout_url(self, submission_id: int = None) -> str:
+
+    def _get_upgrade_checkout_full_url(self, submission_id: int = None) -> str:
         """
-        Generate Stripe checkout URL for this submission
-        Falls back to generic premium page if submission_id not provided
+        Generate full URL to upgrade checkout endpoint
+        Backend will create Stripe session and redirect to checkout
         """
         if submission_id:
-            return f"{self.website_url}/checkout?submission_id={submission_id}"
+            # Construct absolute URL with domain
+            return f"https://design-diagnosis.roomsbyrachel.ca/api/upgrade-checkout/{submission_id}"
+        else:
+            return f"{self.website_url}/premium"
+
+    def _get_stripe_checkout_url(self, submission_id: int = None) -> str:
+        """
+        Generate Stripe checkout URL for premium upgrade
+        Uses the /api/upgrade-checkout endpoint to create checkout session
+        """
+        if submission_id:
+            # Return the API endpoint that will generate the Stripe checkout session
+            # Frontend will fetch this URL and redirect to Stripe
+            return f"/api/upgrade-checkout/{submission_id}"
         else:
             return f"{self.website_url}/premium"
     
