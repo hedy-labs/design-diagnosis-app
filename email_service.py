@@ -527,7 +527,7 @@ class EmailService:
             
             if self.mode == "LIVE":
                 message = Mail(
-                    from_email=self.from_email,
+                    from_email=From(self.from_email, "Rooms by Rachel"),
                     to_emails=email,
                     subject=subject,
                     html_content=html_content
