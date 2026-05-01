@@ -912,27 +912,43 @@ async def payment_webhook(request: Request, background_tasks: BackgroundTasks):
         if event.get('type') == 'checkout.session.completed':
             session = event.get('data', {}).get('object', {})
             session_id = session.get('id')
+            metadata = session.get('metadata', {})
             
             logger.info(f"💳 Checkout session completed: {session_id}")
+            logger.info(f"💳 Session metadata: {metadata}")
             
             if not db:
                 logger.error("❌ Database unavailable for webhook")
                 return JSONResponse({"error": "DB unavailable"}, status_code=503)
             
-            # Get payment
+            # Get payment by session ID
             payment = db.get_payment_by_stripe_id(session_id)
             if not payment:
                 logger.error(f"❌ Payment not found for session {session_id}")
-                return JSONResponse({"error": "Payment not found"}, status_code=404)
+                # Try alternate: extract submission_id from metadata
+                submission_id_str = metadata.get('submission_id')
+                if submission_id_str:
+                    try:
+                        submission_id = int(submission_id_str)
+                        logger.info(f"💳 Found submission_id in metadata: {submission_id}")
+                        # Payment might not be created yet, but submission exists
+                    except:
+                        logger.error(f"❌ Could not parse submission_id from metadata: {submission_id_str}")
+                        return JSONResponse({"error": "Payment not found"}, status_code=404)
+                else:
+                    return JSONResponse({"error": "Payment not found"}, status_code=404)
+            else:
+                submission_id = payment.submission_id
             
-            # Mark payment as completed
-            db.update_payment_status(payment.id, "completed")
-            logger.info(f"✅ Payment marked completed: {payment.id}")
+            # Mark payment as completed (if exists)
+            if payment:
+                db.update_payment_status(payment.id, "completed")
+                logger.info(f"✅ Payment marked completed: {payment.id}")
             
             # Get submission
-            submission = db.get_form_submission(payment.submission_id)
+            submission = db.get_form_submission(submission_id)
             if not submission:
-                logger.error(f"❌ Submission not found for payment {payment.id}")
+                logger.error(f"❌ Submission not found for submission_id {submission_id}")
                 return {"status": "received"}
             
             # IMMEDIATELY queue premium report generation

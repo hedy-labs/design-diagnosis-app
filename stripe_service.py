@@ -164,8 +164,20 @@ class StripeService:
                 webhook_secret
             )
             
-            logger.info(f"✅ Webhook verified: {event['type']}")
-            return event
+            # Convert Stripe event object to dict for consistent access
+            event_dict = {
+                'type': event['type'],
+                'data': {
+                    'object': {
+                        'id': event['data']['object']['id'],
+                        'payment_status': event['data']['object'].get('payment_status'),
+                        'metadata': event['data']['object'].get('metadata', {})
+                    }
+                }
+            }
+            
+            logger.info(f"✅ Webhook verified: {event_dict['type']}")
+            return event_dict
         
         except Exception as e:
             logger.error(f"❌ Webhook verification error: {e}")
