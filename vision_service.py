@@ -90,7 +90,7 @@ class VisionService:
         Analyze property photos for Pillar 2: Lighting & Optical Health
         
         Args:
-            images: List of image file paths or base64 strings
+            images: List of image file paths or base64 strings (supports 15-30 images with batching)
         
         Returns:
             PillarAnalysis with findings in "Vibe → Expert Why → Fix" format
@@ -100,6 +100,12 @@ class VisionService:
             return self._default_pillar_2_response()
         
         logger.info(f"🎬 Analyzing {len(images)} photos for Pillar 2: Lighting & Optical Health")
+        
+        # Batch images if > 10 (Gemini limit per call)
+        total_images = len(images)
+        if total_images > 10:
+            logger.info(f"   Processing {total_images} images in batches (Gemini limit: 10/call)")
+            return self._analyze_pillar_2_batched(images)
         
         # Build image content for Gemini
         content = []
@@ -178,6 +184,60 @@ class VisionService:
             import traceback
             logger.error(traceback.format_exc())
             return self._default_pillar_2_response()
+    
+    def _analyze_pillar_2_batched(self, images: List[str]) -> PillarAnalysis:
+        """
+        Analyze large image sets by batching (10 images per Gemini call).
+        Aggregates results across batches.
+        """
+        logger.info(f"📦 Batching {len(images)} images into groups of 10")
+        
+        all_findings = []
+        all_room_summaries = {}
+        pillar_scores = []
+        
+        # Process in batches of 10
+        for batch_idx in range(0, len(images), 10):
+            batch = images[batch_idx:batch_idx+10]
+            batch_num = (batch_idx // 10) + 1
+            total_batches = (len(images) + 9) // 10
+            
+            logger.info(f"   Batch {batch_num}/{total_batches}: Processing {len(batch)} images")
+            
+            # Analyze this batch
+            batch_result = self.analyze_pillar_2_lighting(batch)
+            
+            if batch_result:
+                all_findings.extend(batch_result.findings or [])
+                all_room_summaries.update(batch_result.room_summaries or {})
+                pillar_scores.append(batch_result.pillar_score)
+        
+        # Aggregate results
+        if pillar_scores:
+            aggregated_score = sum(pillar_scores) / len(pillar_scores)
+        else:
+            aggregated_score = 0.0
+        
+        # Deduplicate findings (same issue in multiple batches)
+        unique_findings = []
+        seen_issues = set()
+        for finding in all_findings:
+            issue_key = f"{finding.room}_{finding.issue_type}"
+            if issue_key not in seen_issues:
+                unique_findings.append(finding)
+                seen_issues.add(issue_key)
+        
+        logger.info(f"   Aggregated {len(all_findings)} findings → {len(unique_findings)} unique issues")
+        logger.info(f"   Average pillar score: {aggregated_score:.1f}/10")
+        
+        return PillarAnalysis(
+            pillar_name="Lighting & Optical Health",
+            pillar_score=aggregated_score,
+            findings=unique_findings,
+            room_summaries=all_room_summaries,
+            pillar_narrative=f"Analyzed {len(images)} photos across {(len(images)+9)//10} batches. Found {len(unique_findings)} lighting design issues.",
+            priority_fixes=[]
+        )
     
     def _get_pillar_2_prompt(self) -> str:
         """Return the Pillar 2 (Lighting) system prompt with Human Voice tone"""
