@@ -12,6 +12,21 @@ from typing import Dict, List, Optional
 from dataclasses import dataclass, asdict
 import base64
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # Fallback: manually load .env if python-dotenv not installed
+    env_file = os.path.join(os.path.dirname(__file__), '.env')
+    if os.path.exists(env_file):
+        with open(env_file) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    key, value = line.split('=', 1)
+                    os.environ[key.strip()] = value.strip()
+
 logger = logging.getLogger(__name__)
 
 try:
