@@ -13,3 +13,5 @@ playwright>=1.40.0
 playwright-stealth>=1.0.1
 imagehash>=4.3.0
 httpx>=0.25.0
+redis>=5.0.0
+rq>=1.15.0

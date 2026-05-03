@@ -18,6 +18,9 @@ import logging
 import shutil
 import stripe
 
+# 📊 JOB QUEUE: Import queue manager for async background jobs
+from queue_manager import enqueue_premium_analysis, get_queue, check_redis_health
+
 # 🔐 ANTI-ABUSE: Import anti-abuse module
 from anti_abuse import (
     normalize_email, is_burner_email, extract_listing_id,
@@ -1252,11 +1255,17 @@ async def get_form():
 @app.get("/payment-success", response_class=HTMLResponse)
 async def payment_success(session_id: str = Query(None), background_tasks: BackgroundTasks = None):
     """
-    Serve payment success page + trigger report generation
+    Serve payment success page + trigger async report generation
+    
+    📊 ASYNC ARCHITECTURE:
+    - Immediately returns success page (202 Accepted pattern)
+    - Queues heavy Vision AI analysis to background job queue (Redis + RQ)
+    - Worker processes analysis async (no timeout concerns)
+    - User receives email with PDF report when complete (~2-5 minutes)
     """
     try:
-        # If session_id provided, trigger report generation immediately
-        if session_id and db and background_tasks:
+        # If session_id provided, queue report generation
+        if session_id and db:
             logger.info(f"💳 Processing payment success for session: {session_id}")
             
             # Get payment
@@ -1269,15 +1278,58 @@ async def payment_success(session_id: str = Query(None), background_tasks: Backg
                 # Get submission
                 submission = db.get_form_submission(payment.submission_id)
                 if submission:
-                    # Queue report generation immediately
-                    background_tasks.add_task(
-                        generate_and_send_report,
+                    # 📊 QUEUE PREMIUM ANALYSIS (Async, no timeout)
+                    # This is the KEY CHANGE: Instead of awaiting Vision AI synchronously,
+                    # we push it to a Redis queue for a background worker to process
+                    
+                    # Get image URLs for the submission
+                    image_urls = []
+                    submission_photo_dir = os.path.join(UPLOADED_PHOTOS_DIR, f"submission_{submission.id}")
+                    if os.path.exists(submission_photo_dir):
+                        photo_files = sorted([f for f in os.listdir(submission_photo_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png', '.webp'))])
+                        if photo_files:
+                            for photo_file in photo_files[:20]:  # Max 20 for premium
+                                photo_path = os.path.join(submission_photo_dir, photo_file)
+                                try:
+                                    with open(photo_path, 'rb') as f:
+                                        import base64
+                                        b64_data = base64.b64encode(f.read()).decode('utf-8')
+                                        image_urls.append(f"data:image/jpeg;base64,{b64_data}")
+                                except Exception as e:
+                                    logger.warning(f"⚠️  Failed to encode photo {photo_file}: {e}")
+                            
+                            logger.info(f"✅ Loaded {len(image_urls)} photos for queuing")
+                    
+                    # Queue the job
+                    job_id = enqueue_premium_analysis(
                         submission_id=submission.id,
-                        report_type="premium"
+                        image_urls=image_urls,
+                        user_email=submission.email,
+                        property_name=submission.property_name,
+                        job_timeout=600  # 10 minutes
                     )
-                    logger.info(f"📊 Premium report generation queued for submission {submission.id}")
+                    
+                    if job_id:
+                        logger.info(f"📤 QUEUED: Premium analysis job {job_id} for submission {submission.id}")
+                        logger.info(f"   Property: {submission.property_name}")
+                        logger.info(f"   Photos: {len(image_urls)}")
+                        logger.info(f"   User will receive email when complete")
+                    else:
+                        logger.error(f"❌ Failed to queue premium analysis (Redis may be unavailable)")
+                        logger.warning(f"⚠️  Falling back to synchronous analysis (may cause timeout)...")
+                        # FALLBACK: Run synchronously if queue is unavailable
+                        # This is non-ideal but prevents hard failure
+                        if background_tasks:
+                            background_tasks.add_task(
+                                generate_and_send_report,
+                                submission_id=submission.id,
+                                report_type="premium"
+                            )
+                            logger.warning(f"⚠️  Queued synchronous fallback")
     except Exception as e:
         logger.error(f"⚠️  Payment success handler error: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
     
     # Serve success page
     success_paths = [
