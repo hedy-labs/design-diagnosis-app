@@ -65,9 +65,17 @@ The orientation matters as much as the furniture itself.
 1. ✓ Entry drop zone (hooks, bench, shelf)?
 2. ✓ Walkway clearance (60cm+ maintained)?
 3. ✓ Furniture scale vs. room size?
-4. ✓ Functional anchors (coffee tables, side tables)?
+4. ✓ Functional anchors (coffee tables, side tables, end tables, dressers)?
+   - Coffee table visible = +0.5 (essential for living areas)
+   - End tables + sofa = +0.5 (functional anchors critical)
+   - Dresser/clothing storage visible = +0.5 (guest clothing comfort)
 5. **NEW** ✓ Desk/seating orientation (facing wall? back-to-wall facing room?)
+   - **MICRO-SPACE EXCEPTION**: In constrained spaces, acknowledge furniture placement limits before deducting
+   - Desk facing wall in full-size room = -1.0 (design failure)
+   - Desk facing wall in micro-space with NO alternative = -0.5 (constraint-based, recommend textile fixes)
 6. **NEW** ✓ Blocked doorways or safety hazards?
+7. **NEW** ✓ Furniture-guest fit (e.g., oversized chair eating floor space in micro-unit?) = -0.5 if unfit
+8. **NEW** ✓ For micro-spaces: Does host use textile fixes (runners, cushions, accent lighting) to compensate for spatial limits?
 
 ---
 
@@ -172,10 +180,15 @@ Together = "finished" property instead of "basic" property
 ### Revised Pillar 3 Analysis Checklist:
 1. ✓ Inventory EVERY textile: bedding, throws, curtains, rugs, towels
 2. **NEW** ✓ For each room, explicitly check for CURTAINS (window treatment)
+   - NOTE: Blinds ≠ Curtains. Blinds are utilitarian (privacy/light control) only.
+   - Curtains/drapes add psychological softness (colour, texture, warmth). REQUIRED for intentionality.
 3. **NEW** ✓ For each room, check for AREA RUG (atmospheric softener)
+   - If present: Check color coordination with furniture (matches sofa/bed/overall palette?)
+   - If present & coordinated: +0.5 points (positive signal of curation)
 4. **NEW** ✓ Never skip curtain assessment — they are NOT optional
 5. **NEW** ✓ Flag missing rugs as "cozy atmosphere deficit" (psychological signal)
-6. ✓ Distinguish between "functional textiles" (acceptable) and "layered textiles" (excellent)
+6. **NEW** ✓ For dining areas (micro-spaces): Textile fixes (runners, placemats, cushions) are critical substitutes for space
+7. ✓ Distinguish between "functional textiles" (acceptable) and "layered textiles" (excellent)
 
 ---
 
@@ -248,47 +261,65 @@ ASSESSMENT LANGUAGE:
 floor runner, placemats) to break up monochromatic feeling and add warmth."
 ```
 
-### New Rule #3: ARTWORK COUNTING RULE
+### New Rule #3: ARTWORK PLACEMENT STRATEGY (Not Just Count)
 
-**Blind Test #1 Failure:** AI said artwork was "thoughtfully placed" when only 2 pieces existed across 8 rooms.
+**Blind Test #1 Failure:** AI said artwork was "thoughtfully placed" when pieces were misplaced (wrong walls, wrong heights).  
+**Blind Test #4 Refinement (WINNIPEG):** Artwork exists but placement is strategic—not about total count in rooms.
 
 ```
-ARTWORK INVENTORY (Critical for Intentionality):
+ARTWORK FRAMEWORK (Placement-First Assessment):
 
-Count visible art pieces across entire property.
-Calculate ratio: Pieces ÷ Total Rooms
+OLD RULE (Blunt): Count total pieces ÷ rooms
+NEW RULE (Strategic): Identify REQUIRED FOCAL POINTS per space + assess placement quality
 
-SCORING THRESHOLDS:
-<1 piece per 3 rooms = RED FLAG (insufficient) → -2 points
-1 piece per 2 rooms = Minimal (needs more) → -1 point
-1 piece per room = Adequate → 0 points
-1.5+ pieces per room = Thoughtful → +1 point
+REQUIRED FOCAL POINTS (by space type):
+1. BEDROOM: Above bed (personalization, focal wall)
+   - Missing = -0.5 points
+   - Present + at eye level (4-5 ft) = +0.5 points
+   
+2. LIVING/SOFA AREA: Above sofa (gathering space focal point)
+   - Missing = -0.5 points
+   - Present + centered = +0.5 points
+   
+3. DINING TABLE/DESK: Above table (conversation focal point)
+   - Missing = -0.5 points
+   - Present + at conversation height = +0.5 points
+   
+4. BATHROOM: Above toilet or vanity
+   - Missing = -0.25 points
+   - Present but too high (ceiling-level) = -0.5 points (misplaced)
+   - Present at eye level = +0.25 points
 
-RACHEL'S EXAMPLE (KITCHENER):
-Only 2 artworks in 8 rooms = 0.25 pieces per room = SEVERE intentionality deficit
-Should be: Living room (3-4), bedrooms (1-2 each), workspace (1-2), kitchen (1)
-= ~10-12 pieces total for "intentional" score
-
-DISTRIBUTION MATTERS:
-✗ Missing art in living room = -0.5 points (focal point, gathering space)
-✗ Missing art in bedrooms = -0.5 points each (personalization, reduces institutional feel)
-✗ Missing art in workspace = -0.5 points (anti-institutional signal crucial here)
-✗ Missing art in kitchen = -0.25 points (gathering/entertaining space)
+MISPLACEMENT PENALTIES:
+✗ Art too high on wall (near ceiling) = -0.5 points
+✗ Art on wrong focal wall = -0.5 points
+✗ Art in non-functional location (random wall) = -0.25 points
 
 ASSESSMENT LANGUAGE:
-"I count [X] artworks across 8 rooms ([Y] per room). Distribution: [room breakdown].
-This is [insufficient/adequate/thoughtful] for intentionality. Needs [X] more pieces
-in [specific rooms] to reach "curated" level."
+"I identify [X] focal-point areas requiring art: bed ([present/missing]), sofa ([present/missing]), 
+dining table ([present/missing]), bathroom ([present/missing]). Current placement: [assessment]. 
+Strategic gaps: [specific locations]. This is [insufficient/adequate/thoughtful] for intentionality."
+
+SMALL SPACES (Micro-units):
+For studios/1BR micro-spaces, reduce focal-point requirements:
+- Minimum: Bed focal, Dining/workspace focal = 2 pieces required
+- Not: 8-10 pieces (excessive for small space)
+
+RACHEL'S EXAMPLE (WINNIPEG - Corrected):
+Required focal points: Above bed, above dining table, bathroom wall sconce area
+Current: 1 piece above window (non-focal), 1 piece above toilet (too high)
+Strategic fix: Move/add pieces to focal points = 3-4 pieces total (not 8-10)
 ```
 
 ### Revised Pillar 5 Analysis Checklist:
 1. ✓ Colour palette assessment (coherent? safe or visionary?)
 2. **NEW** ✓ Distinguish "safe/clean" from "intentional/curated"
 3. **NEW** ✓ For monochromatic spaces, inventory colour accents (towels, runners, placemats)
-4. **NEW** ✓ Count artwork pieces explicitly. State distribution by room.
-5. **NEW** ✓ Flag if <1 piece per 2 rooms = RED FLAG
-6. ✓ Assess personality signals (plants, accessories, styling touches)
-7. ✓ Grade on personality + art presence, NOT just "coherence"
+4. **NEW** ✓ Assess artwork placement (not just count). State focal-point assessment by space.
+5. **NEW** ✓ Identify MISPLACED artwork (wrong wall, wrong height). Apply -0.5 penalty per misplaced piece.
+6. **NEW** ✓ RECOGNIZE HIDDEN STRENGTHS: Kitchen stocking, bathroom lighting, area rug coordination = positive intentionality signals. Do NOT overlook these.
+7. ✓ Assess personality signals (plants, accessories, styling touches)
+8. ✓ Grade on personality + art presence, NOT just "coherence"
 
 ---
 
