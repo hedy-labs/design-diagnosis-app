@@ -111,13 +111,13 @@ def enqueue_premium_analysis(
 
 def get_job_status(job_id: str) -> Dict[str, Any]:
     """
-    Get job status and progress
+    Get job status and progress with metadata
     
     Args:
         job_id: RQ job ID
     
     Returns:
-        Dict with status, progress, result, error
+        Dict with status, progress, result, error, and metadata
     """
     try:
         conn = get_redis_connection()
@@ -133,7 +133,8 @@ def get_job_status(job_id: str) -> Dict[str, Any]:
             "created_at": job.created_at.isoformat() if job.created_at else None,
             "started_at": job.started_at.isoformat() if job.started_at else None,
             "ended_at": job.ended_at.isoformat() if job.ended_at else None,
-            "progress": job.meta.get('progress', 0) if job.meta else 0
+            "progress": job.meta.get('progress', 0) if job.meta else 0,
+            "meta": job.meta if job.meta else {}  # Include full metadata
         }
         
         # Add result or error

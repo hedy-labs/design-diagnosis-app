@@ -25,7 +25,7 @@
             background: white;
             border-radius: 12px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 600px;
+            max-width: 700px;
             width: 100%;
             padding: 60px 40px;
             text-align: center;
@@ -54,6 +54,138 @@
             color: #6b7280;
             margin-bottom: 30px;
         }
+        
+        /* ===== REAL-TIME STATUS SECTION ===== */
+        .status-section {
+            background: linear-gradient(135deg, #f0f4ff 0%, #f5f1ff 100%);
+            border-radius: 8px;
+            padding: 25px;
+            margin: 30px 0;
+            border: 2px solid #e0e7ff;
+        }
+        
+        .status-header {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 15px;
+        }
+        
+        .status-message {
+            font-size: 14px;
+            color: #4b5563;
+            margin-bottom: 15px;
+            min-height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .status-icon {
+            display: inline-block;
+            margin-right: 8px;
+            font-size: 16px;
+        }
+        
+        /* Progress Bar */
+        .progress-bar-container {
+            width: 100%;
+            height: 24px;
+            background: #e5e7eb;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 10%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .progress-label {
+            font-size: 12px;
+            color: #6b7280;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .progress-steps {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            margin-top: 15px;
+            font-size: 12px;
+        }
+        
+        .progress-step {
+            flex: 1;
+            padding: 8px;
+            background: white;
+            border-radius: 6px;
+            border: 2px solid #e5e7eb;
+            color: #6b7280;
+            transition: all 0.3s ease;
+        }
+        
+        .progress-step.active {
+            border-color: #667eea;
+            background: #f0f4ff;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .progress-step.completed {
+            border-color: #10b981;
+            background: #ecfdf5;
+            color: #10b981;
+            font-weight: 600;
+        }
+        
+        /* Download Button (hidden until complete) */
+        .download-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e5e7eb;
+            display: none;
+        }
+        
+        .download-section.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .download-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .download-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+        }
+        
+        /* ===== END STATUS SECTION ===== */
         
         .details {
             background: #f3f4f6;
@@ -163,17 +295,27 @@
         
         .loading {
             display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #e5e7eb;
-            border-top: 3px solid #667eea;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e5e7eb;
+            border-top: 2px solid #667eea;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
+            animation: spin 0.8s linear infinite;
         }
         
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: #fee2e2;
+            border-left: 4px solid #dc2626;
+            color: #991b1b;
+            padding: 12px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-size: 14px;
         }
     </style>
 </head>
@@ -181,7 +323,52 @@
     <div class="container">
         <div class="success-icon">✓</div>
         <h1>Payment Successful!</h1>
-        <p class="subtitle">Thank you for your purchase. Your premium report is being prepared.</p>
+        <p class="subtitle">Your premium report is being prepared by Hedy AI.</p>
+        
+        <!-- ===== REAL-TIME STATUS SECTION ===== -->
+        <div class="status-section">
+            <div class="status-header">📊 Analysis In Progress</div>
+            
+            <div class="status-message">
+                <span class="status-icon loading"></span>
+                <span id="statusText">Preparing your analysis...</span>
+            </div>
+            
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar" style="width: 10%;"></div>
+            </div>
+            
+            <div class="progress-label">
+                <span id="progressPercentage">10%</span>
+                <span>Complete</span>
+            </div>
+            
+            <!-- Progress Steps -->
+            <div class="progress-steps">
+                <div class="progress-step active" id="step-queued">Queued</div>
+                <div class="progress-step" id="step-analyzing">Analyzing</div>
+                <div class="progress-step" id="step-roi">ROI Calc</div>
+                <div class="progress-step" id="step-pdf">PDF Gen</div>
+                <div class="progress-step" id="step-finished">Done</div>
+            </div>
+            
+            <!-- Download Section (appears when complete) -->
+            <div class="download-section" id="downloadSection">
+                <p style="margin-bottom: 15px; color: #10b981; font-weight: 600;">
+                    ✅ Your report is ready!
+                </p>
+                <a href="#" class="download-button" id="downloadButton" onclick="downloadReport(event)">
+                    📥 Download Your Report
+                </a>
+                <p style="font-size: 13px; color: #6b7280; margin-top: 10px;">
+                    Your report has also been sent to your email.
+                </p>
+            </div>
+            
+            <!-- Error Message (hidden by default) -->
+            <div id="errorMessage" style="display: none;"></div>
+        </div>
+        <!-- ===== END STATUS SECTION ===== -->
         
         <div class="details">
             <div class="detail-row">
@@ -196,45 +383,64 @@
                 <span class="detail-label">Session ID:</span>
                 <span class="detail-value" id="sessionId">Loading...</span>
             </div>
+            <div class="detail-row">
+                <span class="detail-label">Job ID:</span>
+                <span class="detail-value" id="jobId">Retrieving...</span>
+            </div>
         </div>
         
         <div class="next-steps">
-            <h2>Your Expert Report is Being Generated...</h2>
-            <p style="margin-bottom: 20px; padding: 15px; background: #f0f4ff; border-left: 4px solid #667eea; border-radius: 4px;">
-                <strong>✨ Please wait 2-3 minutes.</strong> Our system is analyzing your property photos and creating your 8-page Design Diagnosis PDF. You'll receive it via email shortly.
-            </p>
-            
-            <h2 style="margin-top: 25px;">What's Next?</h2>
+            <h2>⏳ Typical Timeline</h2>
             <ol>
-                <li><strong>Check your email</strong> in 2-3 minutes for your Design Diagnosis report</li>
-                <li><strong>Check your Spam/Junk folder</strong> if you don't see it in your inbox</li>
-                <li><strong>Review your Vitality Score</strong> and top 3 high-impact fixes</li>
-                <li><strong>Explore the shopping list</strong> with budget-friendly design fixes (Value, Signature, Luxury tiers)</li>
-                <li><strong>Maximize Your ROI:</strong> <a href="https://calendly.com/roomsbyrachel" style="color: #667eea; font-weight: bold; text-decoration: none;">Book your 1-on-1 consultation with Rachel</a> to turn these fixes into an action plan and fast-track your property's transformation.</li>
+                <li><strong>0-10 seconds:</strong> Your job queues and analysis begins</li>
+                <li><strong>20-60 seconds:</strong> Hedy analyzes your photos & calculates ROI metrics</li>
+                <li><strong>60-90 seconds:</strong> PDF report is assembled with your Vitality Score</li>
+                <li><strong>90-120 seconds:</strong> Email with your report is sent</li>
             </ol>
-            <p style="margin-top: 20px; padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
-                <strong>⚠️ Pro Tip:</strong> PDFs often land in <strong>Spam or Junk</strong> initially. Check there first if you don't see it!
-            </p>
+            
+            <h2 style="margin-top: 25px;">📊 What You'll Receive</h2>
+            <ol>
+                <li><strong>Your Vitality Score</strong> (0-100): Overall design quality rating</li>
+                <li><strong>5-Pillar Breakdown:</strong> Lighting, Color, Functionality, Layout, Staging</li>
+                <li><strong>Top 3 ROI-Focused Fixes</strong> with business impact analysis</li>
+                <li><strong>Budget-Aware Shopping Lists:</strong> Value, Signature, & Luxury tiers</li>
+                <li><strong>Room-by-Room Diagnostics</strong> with specific recommendations</li>
+            </ol>
+            
+            <h2 style="margin-top: 25px;">✨ Next Steps After Download</h2>
+            <ol>
+                <li><strong>Review Your Score</strong> and understand the top revenue-impacting fixes</li>
+                <li><strong>Prioritize by P1/P2/P3</strong> (critical, high, nice-to-have)</li>
+                <li><strong>Use the Shopping Lists</strong> to source fixes within your budget</li>
+                <li><strong>Book a Consultation</strong> with Rachel for personalized guidance: <a href="https://calendly.com/roomsbyrachel" style="color: #667eea; font-weight: bold;">calendly.com/roomsbyrachel</a></li>
+            </ol>
         </div>
         
         <div class="button-group">
-            <button class="button button-primary" onclick="checkReportStatus()">
-                Check Report Status
-            </button>
             <a href="/form.html" class="button button-secondary">
-                Submit Another Property
+                ➕ Submit Another Property
             </a>
         </div>
         
         <div class="footer">
-            <p>Questions? Contact <a href="mailto:rachellabelles@gmail.com">Contact Support</a></p>
-            <p>Or visit <a href="https://roomsbyrachel.ca">roomsbyrachel.ca</a></p>
-            <p><strong>Book a consultation:</strong> <a href="https://calendly.com/roomsbyrachel">calendly.com/roomsbyrachel</a></p>
+            <p>Questions? Contact <a href="mailto:rachellabelles@gmail.com">Support</a></p>
+            <p><strong>Schedule Your 1-on-1:</strong> <a href="https://calendly.com/roomsbyrachel">Calendly</a></p>
+            <p><strong>Visit us:</strong> <a href="https://roomsbyrachel.ca">roomsbyrachel.ca</a></p>
         </div>
     </div>
     
     <script>
-        // Extract session_id from URL
+        // ============================================================================
+        // REAL-TIME JOB TRACKING: Frontend Polling & UI Updates
+        // ============================================================================
+        
+        const POLL_INTERVAL = 3000; // Poll every 3 seconds
+        const MAX_RETRIES = 60; // Maximum 3 minutes (60 * 3s)
+        let pollCount = 0;
+        let jobId = null;
+        let reportPath = null;
+        
+        // Get session_id from URL
         function getSessionId() {
             const params = new URLSearchParams(window.location.search);
             return params.get('session_id');
@@ -248,19 +454,247 @@
             }
         }
         
-        // Check report status (placeholder for future API)
-        function checkReportStatus() {
-            const sessionId = getSessionId();
-            if (!sessionId) {
-                alert('Session ID not found. Please refresh the page.');
-                return;
+        // Extract job ID from page (Redis key or submission ID)
+        function extractJobId() {
+            // Try to get from window object (injected by backend)
+            if (window.JOB_ID) {
+                return window.JOB_ID;
             }
             
-            alert(`Report Status:\n\nSession: ${sessionId}\n\nYour report is being generated. Check your email in 2-5 minutes!`);
+            // Try to get from URL param (if available)
+            const params = new URLSearchParams(window.location.search);
+            const urlJobId = params.get('job_id');
+            if (urlJobId) return urlJobId;
+            
+            // Fallback: return null (will show error)
+            return null;
+        }
+        
+        // Log with prefix for debugging
+        function log(msg) {
+            console.log(`[JOB TRACKER] ${msg}`);
+        }
+        
+        // Update status message and icon
+        function updateStatus(message, icon = '🔄') {
+            try {
+                const statusText = document.getElementById('statusText');
+                if (statusText) {
+                    statusText.textContent = message;
+                    // Update icon based on message
+                    const statusIcon = document.querySelector('.status-icon');
+                    if (statusIcon) {
+                        if (icon === 'loading') {
+                            statusIcon.className = 'status-icon loading';
+                        } else {
+                            statusIcon.className = 'status-icon';
+                            statusIcon.textContent = icon;
+                        }
+                    }
+                }
+            } catch (e) {
+                log(`⚠️  Error updating status: ${e.message}`);
+            }
+        }
+        
+        // Update progress bar
+        function updateProgress(percent) {
+            try {
+                const bar = document.getElementById('progressBar');
+                const label = document.getElementById('progressPercentage');
+                if (bar && label) {
+                    bar.style.width = percent + '%';
+                    label.textContent = percent + '%';
+                }
+            } catch (e) {
+                log(`⚠️  Error updating progress: ${e.message}`);
+            }
+        }
+        
+        // Update progress steps
+        function updateProgressSteps(state) {
+            try {
+                const stepMap = {
+                    'queued': 0,
+                    'analyzing_images': 1,
+                    'calculating_roi': 2,
+                    'generating_pdf': 3,
+                    'finished': 4
+                };
+                
+                const stepIndex = stepMap[state] || 0;
+                const steps = document.querySelectorAll('.progress-step');
+                
+                steps.forEach((step, index) => {
+                    step.classList.remove('active', 'completed');
+                    
+                    if (index < stepIndex) {
+                        step.classList.add('completed');
+                    } else if (index === stepIndex) {
+                        step.classList.add('active');
+                    }
+                });
+            } catch (e) {
+                log(`⚠️  Error updating steps: ${e.message}`);
+            }
+        }
+        
+        // Show download button
+        function showDownloadButton(reportPath) {
+            try {
+                const downloadSection = document.getElementById('downloadSection');
+                const downloadButton = document.getElementById('downloadButton');
+                
+                if (downloadSection && downloadButton) {
+                    downloadButton.href = reportPath;
+                    downloadSection.classList.add('show');
+                    
+                    // Also hide the loading spinner
+                    const statusIcon = document.querySelector('.status-icon');
+                    if (statusIcon) statusIcon.className = 'status-icon';
+                    if (statusIcon) statusIcon.textContent = '✅';
+                }
+            } catch (e) {
+                log(`⚠️  Error showing download button: ${e.message}`);
+            }
+        }
+        
+        // Show error message
+        function showError(message) {
+            try {
+                const errorDiv = document.getElementById('errorMessage');
+                if (errorDiv) {
+                    errorDiv.innerHTML = `<div class="error-message">❌ ${message}</div>`;
+                    errorDiv.style.display = 'block';
+                }
+                
+                // Update status
+                updateStatus(`Error: ${message}`, '❌');
+            } catch (e) {
+                log(`⚠️  Error showing error message: ${e.message}`);
+            }
+        }
+        
+        // Poll job status from API
+        async function pollJobStatus() {
+            try {
+                if (!jobId) {
+                    log('⚠️  No job ID available');
+                    return;
+                }
+                
+                pollCount++;
+                log(`Polling job status... (attempt ${pollCount}/${MAX_RETRIES})`);
+                
+                // 🎯 FETCH JOB STATUS FROM API
+                const response = await fetch(`/api/job-status/${jobId}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        log('⚠️  Job not found (may still be queuing)');
+                        // Retry
+                        if (pollCount < MAX_RETRIES) {
+                            setTimeout(pollJobStatus, POLL_INTERVAL);
+                        }
+                        return;
+                    }
+                    throw new Error(`API error: ${response.status}`);
+                }
+                
+                // 📊 PARSE RESPONSE
+                const data = await response.json();
+                
+                log(`Job status: ${data.status}, progress: ${data.progress}%`);
+                console.log(`[JOB TRACKER] Full response:`, data);
+                
+                // ✅ UPDATE UI BASED ON STATUS
+                updateProgress(data.progress);
+                updateStatus(data.message, '🔄');
+                
+                if (data.status) {
+                    updateProgressSteps(data.status);
+                }
+                
+                // 🎉 IF FINISHED: Show download button
+                if (data.status === 'finished') {
+                    log('✅ Job finished!');
+                    updateStatus(data.message, '✅');
+                    updateProgress(100);
+                    updateProgressSteps('finished');
+                    
+                    // TODO: Get report path from job result
+                    // For now, show generic download message
+                    showDownloadButton(`/api/report/${jobId}`);
+                    return; // Stop polling
+                }
+                
+                // 🔴 IF FAILED: Show error
+                if (data.status === 'failed') {
+                    log('❌ Job failed!');
+                    showError(data.error || 'Analysis failed. Please try again.');
+                    return; // Stop polling
+                }
+                
+                // 🔄 OTHERWISE: Continue polling
+                if (pollCount < MAX_RETRIES) {
+                    setTimeout(pollJobStatus, POLL_INTERVAL);
+                } else {
+                    log('❌ Polling timeout (3 minutes exceeded)');
+                    showError('Analysis took too long. Please contact support.');
+                }
+            
+            } catch (error) {
+                log(`❌ Polling error: ${error.message}`);
+                console.error('[JOB TRACKER] Error details:', error);
+                
+                if (pollCount < MAX_RETRIES) {
+                    log(`Retrying in ${POLL_INTERVAL}ms...`);
+                    setTimeout(pollJobStatus, POLL_INTERVAL);
+                } else {
+                    showError('Unable to retrieve job status. Please refresh the page.');
+                }
+            }
+        }
+        
+        // Download report (placeholder)
+        function downloadReport(event) {
+            event.preventDefault();
+            log('Download initiated');
+            // Report should have been sent to email, just show message
+            alert('Your report PDF has been sent to your email. If it doesn\'t arrive within 5 minutes, check your Spam folder.');
         }
         
         // Initialize on page load
-        window.addEventListener('load', displaySessionId);
+        window.addEventListener('DOMContentLoaded', function() {
+            try {
+                log('🚀 Page loaded, initializing job tracker');
+                
+                // Display session ID
+                displaySessionId();
+                
+                // Get or derive job ID
+                jobId = extractJobId();
+                
+                if (jobId) {
+                    log(`Job ID: ${jobId}`);
+                    document.getElementById('jobId').textContent = jobId.substring(0, 30) + (jobId.length > 30 ? '...' : '');
+                    
+                    // Start polling
+                    log('Starting status polling...');
+                    pollJobStatus();
+                } else {
+                    log('⚠️  Could not extract job ID from URL or window');
+                    updateStatus('Error: Could not retrieve job information', '❌');
+                    showError('Could not retrieve job information. Please refresh the page or contact support.');
+                }
+            } catch (e) {
+                log(`Fatal error: ${e.message}`);
+                console.error('[JOB TRACKER] Fatal error:', e);
+            }
+        });
     </script>
 </body>
 </html>

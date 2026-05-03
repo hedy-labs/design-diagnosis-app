@@ -1222,6 +1222,116 @@ async def get_report(report_id: int):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.get("/api/job-status/{job_id}")
+async def get_job_status(job_id: str):
+    """
+    Get real-time job status for Premium Tier analysis
+    
+    Returns progress state + human-friendly message for UI display.
+    Polling endpoint for frontend (called every 3 seconds).
+    
+    States:
+    - queued → "Preparing your analysis..."
+    - analyzing_images → "Analyzing X photos..."
+    - calculating_roi → "Generating ROI justifications..."
+    - generating_pdf → "Assembling your PDF report..."
+    - finished → "Report ready!"
+    - failed → "Analysis failed"
+    """
+    try:
+        from queue_manager import get_job_status as get_rq_job_status
+        
+        status_info = get_rq_job_status(job_id)
+        
+        if not status_info:
+            return JSONResponse(
+                {
+                    "job_id": job_id,
+                    "status": "not_found",
+                    "message": "Job not found",
+                    "progress": 0
+                },
+                status_code=404
+            )
+        
+        # Map RQ job status to user-friendly state + message
+        rq_status = status_info.get('status', 'unknown')
+        
+        if rq_status == 'finished':
+            message = "✅ Success! Your report is ready to download."
+            progress = 100
+            state = "finished"
+        elif rq_status == 'failed':
+            message = "❌ Analysis failed. Please try again or contact support."
+            progress = 0
+            state = "failed"
+            error = status_info.get('error', 'Unknown error')
+            return JSONResponse(
+                {
+                    "job_id": job_id,
+                    "status": state,
+                    "message": message,
+                    "error": error,
+                    "progress": progress
+                }
+            )
+        elif rq_status == 'started':
+            # Check metadata for current step
+            job_meta = status_info.get('meta', {})
+            current_step = job_meta.get('current_step', 'analyzing_images')
+            photo_count = job_meta.get('photo_count', 0)
+            
+            if current_step == 'analyzing_images':
+                message = f"📸 Hedy is analyzing your {photo_count} photos..."
+                progress = 25
+                state = "analyzing_images"
+            elif current_step == 'calculating_roi':
+                message = "💰 Generating Host ROI justifications and P1/P2/P3 priorities..."
+                progress = 50
+                state = "calculating_roi"
+            elif current_step == 'generating_pdf':
+                message = "📄 Assembling your final Rooms by Rachel PDF report..."
+                progress = 75
+                state = "generating_pdf"
+            else:
+                message = "🔄 Processing your analysis..."
+                progress = 50
+                state = current_step
+        elif rq_status == 'queued':
+            message = "⏳ You are in the queue. Hedy is preparing your canvas..."
+            progress = 10
+            state = "queued"
+        else:
+            message = f"🔄 Processing... ({rq_status})"
+            progress = 50
+            state = rq_status
+        
+        return JSONResponse(
+            {
+                "job_id": job_id,
+                "status": state,
+                "message": message,
+                "progress": progress,
+                "rq_status": rq_status
+            }
+        )
+    
+    except Exception as e:
+        logger.error(f"❌ Job status error: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return JSONResponse(
+            {
+                "job_id": job_id,
+                "status": "error",
+                "message": "Could not retrieve job status",
+                "error": str(e),
+                "progress": 0
+            },
+            status_code=500
+        )
+
+
 # ============================================================================
 # STATIC FILES
 # ============================================================================
@@ -1262,7 +1372,9 @@ async def payment_success(session_id: str = Query(None), background_tasks: Backg
     - Queues heavy Vision AI analysis to background job queue (Redis + RQ)
     - Worker processes analysis async (no timeout concerns)
     - User receives email with PDF report when complete (~2-5 minutes)
+    - Frontend polls /api/job-status/{job_id} for real-time updates
     """
+    job_id = None
     try:
         # If session_id provided, queue report generation
         if session_id and db:
@@ -1338,11 +1450,28 @@ async def payment_success(session_id: str = Query(None), background_tasks: Backg
         "/root/design-diagnosis-app/payment-success.html"
     ]
     
+    html_content = None
     for success_path in success_paths:
         if os.path.exists(success_path):
             logger.info(f"📄 Serving payment-success.html from {success_path}")
             with open(success_path, 'r') as f:
-                return f.read()
+                html_content = f.read()
+                break
+    
+    if not html_content:
+        logger.error("❌ payment-success.html not found in any expected location")
+        return HTMLResponse("<h1>❌ Success page not found</h1>", status_code=404)
+    
+    # Inject job_id into the HTML if available
+    # The frontend JavaScript will use this to poll job status
+    if job_id:
+        html_content = html_content.replace(
+            '</head>',
+            f'<script>window.JOB_ID = "{job_id}";</script>\n    </head>'
+        )
+        logger.info(f"✅ Injected job_id into success page: {job_id}")
+    
+    return html_content
     
     logger.error("❌ payment-success.html not found in any expected location")
     return HTMLResponse("<h1>❌ Success page not found</h1>", status_code=404)
