@@ -1049,7 +1049,25 @@
         
         // Handle manual photo selection
         function handleManualPhotoSelect(event) {
-            manualUploadedFiles = Array.from(event.target.files);
+            const selectedFiles = Array.from(event.target.files);
+            
+            // 🔐 COST CONTROL: Hard cap at 5 images (Free Tier limit)
+            if (selectedFiles.length > 5) {
+                console.warn(`🔐 BLOCKED: User selected ${selectedFiles.length} files (max 5 allowed)`);
+                const fileInput = event.target;
+                
+                // Create error message
+                const errorMsg = `Maximum 5 photos allowed for Free Tier. You selected ${selectedFiles.length}. Upgrade to Premium for unlimited photos.`;
+                showMessage(errorMsg, 'error');
+                
+                // Clear the input (prevent submission)
+                fileInput.value = '';
+                manualUploadedFiles = [];
+                updateManualPhotoPreview();
+                return;
+            }
+            
+            manualUploadedFiles = selectedFiles;
             updateManualPhotoPreview();
         }
         
@@ -1057,7 +1075,17 @@
         function handlePhotoDrop(event) {
             event.preventDefault();
             event.stopPropagation();
-            manualUploadedFiles = Array.from(event.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            const droppedFiles = Array.from(event.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            
+            // 🔐 COST CONTROL: Hard cap at 5 images (Free Tier limit)
+            if (droppedFiles.length > 5) {
+                console.warn(`🔐 BLOCKED: User dropped ${droppedFiles.length} files (max 5 allowed)`);
+                const errorMsg = `Maximum 5 photos allowed for Free Tier. You dropped ${droppedFiles.length}. Upgrade to Premium for unlimited photos.`;
+                showMessage(errorMsg, 'error');
+                return;
+            }
+            
+            manualUploadedFiles = droppedFiles;
             
             // Update file input
             const fileInput = document.getElementById('manual_upload_input');
@@ -1591,14 +1619,41 @@
         let uploadedFiles = [];
         
         function handlePhotoSelect(event) {
-            uploadedFiles = Array.from(event.target.files);
+            const selectedFiles = Array.from(event.target.files);
+            
+            // 🔐 COST CONTROL: Hard cap at 5 images (Free Tier limit)
+            if (selectedFiles.length > 5) {
+                console.warn(`🔐 BLOCKED: User selected ${selectedFiles.length} files (max 5 allowed)`);
+                const fileInput = event.target;
+                
+                const errorMsg = `Maximum 5 photos allowed for Free Tier. You selected ${selectedFiles.length}. Upgrade to Premium for unlimited photos.`;
+                showMessage(errorMsg, 'error');
+                
+                // Clear the input (prevent submission)
+                fileInput.value = '';
+                uploadedFiles = [];
+                updatePhotoPreview();
+                return;
+            }
+            
+            uploadedFiles = selectedFiles;
             updatePhotoPreview();
         }
         
         function handlePhotoDrop(event) {
             event.preventDefault();
             event.stopPropagation();
-            uploadedFiles = Array.from(event.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            const droppedFiles = Array.from(event.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            
+            // 🔐 COST CONTROL: Hard cap at 5 images (Free Tier limit)
+            if (droppedFiles.length > 5) {
+                console.warn(`🔐 BLOCKED: User dropped ${droppedFiles.length} files (max 5 allowed)`);
+                const errorMsg = `Maximum 5 photos allowed for Free Tier. You dropped ${droppedFiles.length}. Upgrade to Premium for unlimited photos.`;
+                showMessage(errorMsg, 'error');
+                return;
+            }
+            
+            uploadedFiles = droppedFiles;
             
             // Update file input to match
             const fileInput = document.getElementById('manualPhotoUpload');

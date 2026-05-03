@@ -398,7 +398,8 @@ async def _extract_image_urls_fallback(page) -> List[str]:
         
         if all_images:
             logger.info(f"   Fallback found {len(all_images)} potential image URLs")
-            return list(all_images)[:40]  # Limit to 40
+            # 🔐 COST CONTROL: Hard cap at 5 images
+            return list(all_images)[:5]
         
         return []
     
@@ -410,7 +411,9 @@ async def _extract_image_urls_fallback(page) -> List[str]:
 def _clean_image_urls(urls: List[str]) -> List[str]:
     """
     Clean and deduplicate image URLs.
-    Remove params, sort by quality, limit to 40 images.
+    Remove params, sort by quality, limit to 5 images (Cost Control).
+    
+    🔐 COST CONTROL: Free Tier hard cap = 5 images max
     """
     
     cleaned = set()
@@ -438,9 +441,9 @@ def _clean_image_urls(urls: List[str]) -> List[str]:
         )
     )
     
-    # Return up to 40 images
-    result = sorted_urls[:40]
-    logger.info(f"✅ Cleaned {len(result)} unique image URLs (from {len(urls)} total)")
+    # 🔐 COST CONTROL: Hard cap at 5 images (Free Tier limit)
+    result = sorted_urls[:5]
+    logger.info(f"🔐 Cleaned {len(result)} unique image URLs (from {len(urls)} total, capped at 5 for Free Tier)")
     return result
 
 

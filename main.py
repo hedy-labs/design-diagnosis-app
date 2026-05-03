@@ -379,6 +379,8 @@ async def analyze_uploaded_photos(request: Request):
     
     Photos are saved to: UPLOADED_PHOTOS_DIR/temp_uploads/
     Vision AI analysis happens LATER during form submission.
+    
+    🔐 COST CONTROL: Enforce 5-image hard cap for Free Tier
     """
     try:
         form = await request.form()
@@ -387,6 +389,16 @@ async def analyze_uploaded_photos(request: Request):
         if not uploaded_files or len(uploaded_files) == 0:
             logger.error("❌ No photos provided")
             return {"success": False, "error": "No photos provided"}, 400
+        
+        # 🔐 COST CONTROL: Hard cap at 5 images (Free Tier limit)
+        if len(uploaded_files) > 5:
+            logger.warning(f"🔐 BLOCKED: User attempted to upload {len(uploaded_files)} photos (max 5 allowed)")
+            print(f"[UPLOAD] 🔐 COST CONTROL: {len(uploaded_files)} files rejected (max 5 for Free Tier)")
+            return {
+                "success": False,
+                "error": f"Maximum 5 photos allowed. You provided {len(uploaded_files)}. Upgrade to Premium for unlimited photos.",
+                "file_count": 0
+            }, 400
         
         logger.info(f"📸 Saving {len(uploaded_files)} uploaded photos (NO ANALYSIS)")
         print(f"[UPLOAD] 📸 Saving {len(uploaded_files)} photos to disk")
@@ -549,9 +561,10 @@ async def analyze_listing(request_data: dict):
             return {"success": False, "error": f"Could not extract photos: {str(e)}"}
         
         # Analyze with Vision AI
-        logger.info(f"🤖 Analyzing {len(image_urls)} images with Vision AI...")
+        # 🔐 COST CONTROL: Hard cap at 5 images for Free Tier
+        logger.info(f"🤖 Analyzing {len(image_urls)} images with Vision AI (max 5 for Free Tier)...")
         analyzer = VisionAnalyzerV2()
-        vision_results = await analyzer.analyze_images_batch(image_urls, max_images=10)
+        vision_results = await analyzer.analyze_images_batch(image_urls, max_images=5)
         
         if not vision_results:
             logger.warning("⚠️  Vision analysis failed")
@@ -1318,10 +1331,11 @@ async def generate_and_send_report(submission_id: int, report_type: str):
                     logger.warning(f"⚠️  No Airbnb URL and no uploaded photos available")
             
             if image_urls:
-                print(f"[REPORT] 🤖 STEP 1B: PHASE 3 - Running holistic Vision AI on {len(image_urls)} images...")
+                print(f"[REPORT] 🤖 STEP 1B: PHASE 3 - Running holistic Vision AI on {len(image_urls)} images (max 5 for Free Tier)...")
                 try:
                     analyzer = VisionAnalyzerV2()
-                    vision_results = await analyzer.analyze_images_batch(image_urls, max_images=10)
+                    # 🔐 COST CONTROL: Hard cap at 5 images for Free Tier
+                    vision_results = await analyzer.analyze_images_batch(image_urls, max_images=5)
                     
                     if vision_results and vision_results.get('design_scorecard'):
                         design_score = vision_results['design_scorecard'].get('total_design_score', 0)
