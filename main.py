@@ -1282,7 +1282,7 @@ async def get_job_status(job_id: str):
             photo_count = job_meta.get('photo_count', 0)
             
             if current_step == 'analyzing_images':
-                message = f"📸 Hedy is analyzing your {photo_count} photos..."
+                message = f"📸 Analyzing your {photo_count} photos..."
                 progress = 25
                 state = "analyzing_images"
             elif current_step == 'calculating_roi':
@@ -1298,7 +1298,7 @@ async def get_job_status(job_id: str):
                 progress = 50
                 state = current_step
         elif rq_status == 'queued':
-            message = "⏳ You are in the queue. Hedy is preparing your canvas..."
+            message = "⏳ Your analysis is queuing. We're preparing your report..."
             progress = 10
             state = "queued"
         else:
