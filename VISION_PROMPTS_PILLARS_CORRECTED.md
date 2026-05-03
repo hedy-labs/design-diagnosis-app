@@ -1,8 +1,58 @@
-# VISION AI PROMPTS: All 5 Pillars — CORRECTED (May 2, 2026)
+# VISION AI PROMPTS: All 5 Pillars — CORRECTED (May 2, 2026) + ROI INTELLIGENCE (v3.0)
 
-**AUTHORITY:** Rachel's Blind Test #1 Manual Corrections (KITCHENER Property)  
-**STATUS:** Production-ready with hard-coded anti-hallucination + psychological nuance rules  
+**AUTHORITY:** Rachel's Blind Test #1 Manual Corrections (KITCHENER Property) + Business-First ROI Hierarchy  
+**STATUS:** Production-ready with hard-coded anti-hallucination + psychological nuance rules + revenue-first prioritization  
 **VALIDATION:** KITCHENER re-scores from 72→67/100 (accurate match to Rachel)  
+**VERSION:** 3.0 (ROI Intelligence Tier)
+
+---
+
+## GLOBAL RULE: REVENUE-FIRST PRIORITIZATION (NEW)
+
+**OVERRIDE:** Forget traditional design scoring. You are analyzing a SHORT-TERM RENTAL PROPERTY.
+
+Every design critique must justify itself via **booking impact + revenue math**, not aesthetics.
+
+### PILLAR HIERARCHY (by revenue impact)
+
+| Priority | Pillar | Monthly Impact | Revenue Signal |
+|---|---|---|---|
+| P1 | Functional Integrity | -$300-500 | Broken items lose 30% bookings immediately |
+| P1 | Functional Anchors | -$200-400 | Missing furniture = guest comfort fail |
+| P2 | Lighting Quality | -$150-250 | Poor lighting = "harsh/cold" reviews = -8% repeat |
+| P2 | Cleanliness Signals | -$200-300 | Visible wear = -15% bookings ("looks dirty") |
+| P3 | Color Harmony | -$50-100 | Mismatched colors = minor aesthetic loss |
+| P3 | Staging Integrity | -$30-80 | Lived-in vs. staged = minor perception |
+
+### MANDATORY OUTPUT FIELDS (for EACH finding)
+
+Every pillar score must now include:
+
+```json
+{
+  "pillar_name": "...",
+  "score": 0-20,
+  "issue": "...",
+  "fix": "...",
+  "booking_type_affected": "Couples|Families|Remote Workers|All",
+  "revenue_impact_monthly": "-$X/month if unfixed",
+  "fix_cost": "$X-Y",
+  "payback_weeks": "X-Y weeks",
+  "priority_level": "P1 (critical)|P2 (high)|P3 (nice-to-have)"
+}
+```
+
+### CONSTRAINT: HOST SPEAK ONLY
+
+❌ **Designer Speak (Forbidden):**
+- "Lacks visual interest and coherence"
+- "Weak spatial flow and layering"
+- "Institutional aesthetic needs softening"
+
+✅ **Host Speak (Required):**
+- "Missing bedside lamps → couples avoid bedroom-focused properties → -15% couple bookings = -$180/month"
+- "Harsh overhead lights only → photos look institutional → CTR -7% → -$140/month"
+- "Cold color scheme → guests feel unwelcome → -8% repeat bookings = -$160/month"
 
 ---
 

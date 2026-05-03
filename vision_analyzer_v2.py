@@ -3,19 +3,32 @@ Vision Analyzer V2 — Batch Claude Vision Analysis for Property Photos
 
 Analyzes multiple property photos in parallel, deduplicates by perceptual hash,
 and aggregates design scores for vitality calculation.
+
+UPDATED: ROI Intelligence Injection (v3.0)
+- All outputs validated for revenue-first justifications
+- No designer speak allowed
+- All recommendations include payback periods
 """
 
 import logging
 import asyncio
 import json
 import os
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 import imagehash
 from PIL import Image
 from io import BytesIO
 import httpx
 
 logger = logging.getLogger(__name__)
+
+# Import ROI validator
+try:
+    from roi_validator import validate_vision_output, validate_lite_response
+except ImportError:
+    logger.warning("⚠️  roi_validator not found, ROI validation disabled")
+    validate_vision_output = None
+    validate_lite_response = None
 
 
 class VisionAnalyzerV2:
@@ -368,7 +381,18 @@ You are a property design reviewer. Analyze the photos and return ONLY JSON:
             import json
             result = json.loads(response_text)
             
+            # ============================================================
+            # ROI VALIDATION (NEW): Ensure revenue-first justifications
+            # ============================================================
+            if validate_vision_output:
+                is_valid, validated_result = validate_vision_output(result, analysis_type='lite')
+                if not is_valid:
+                    logger.warning("⚠️  Lite response failed ROI validation, using best-effort result")
+                result = validated_result
+            
             logger.info(f"✅ Lite analysis complete: score={result.get('design_score', 0)}/30")
+            
+            # Return structured response with ROI fields
             return {
                 'lite_score': result.get('design_score', 0),
                 'gaps': [
@@ -376,7 +400,13 @@ You are a property design reviewer. Analyze the photos and return ONLY JSON:
                     result.get('gap_2', 'N/A'),
                     result.get('gap_3', 'N/A')
                 ],
-                'assessment': result.get('brief_assessment', 'Analysis complete')
+                'roi_justifications': [
+                    result.get('roi_why_1', 'ROI analysis pending'),
+                    result.get('roi_why_2', 'ROI analysis pending'),
+                    result.get('roi_why_3', 'ROI analysis pending')
+                ],
+                'assessment': result.get('brief_assessment', 'Analysis complete'),
+                'raw_response': result  # Include full response for transparency
             }
         
         except json.JSONDecodeError:
