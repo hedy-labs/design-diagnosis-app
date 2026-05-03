@@ -1538,29 +1538,50 @@ async def generate_and_send_report(submission_id: int, report_type: str):
                     logger.warning(f"⚠️  No Airbnb URL and no uploaded photos available")
             
             if image_urls:
-                print(f"[REPORT] 🤖 STEP 1B: PHASE 3 - Running holistic Vision AI on {len(image_urls)} images (max 5 for Free Tier)...")
-                try:
-                    analyzer = VisionAnalyzerV2()
-                    # 🔐 COST CONTROL: Hard cap at 5 images for Free Tier
-                    vision_results = await analyzer.analyze_images_batch(image_urls, max_images=5)
-                    
-                    if vision_results and vision_results.get('design_scorecard'):
-                        design_score = vision_results['design_scorecard'].get('total_design_score', 0)
-                        trust_status = vision_results.get('honest_marketing_status', 'Unknown')
-                        print(f"[REPORT] ✅ PHASE 3 Analysis complete: {design_score}/30, Trust: {trust_status}")
-                        logger.info(f"✅ Holistic Vision analysis complete: {design_score}/30")
-                    else:
-                        print(f"[REPORT]    ❌ Vision AI returned invalid schema")
+                # 💰 TWO-LANE ROUTING: Lite prompt for Free Tier, Premium for paid
+                if report_type == "free":
+                    print(f"[REPORT] 🆓 LITE ANALYSIS: Zero-shot minimal-token analysis for Free Tier...")
+                    try:
+                        analyzer = VisionAnalyzerV2()
+                        # 💰 Free Tier: Use lite (zero-shot, ~500 tokens)
+                        vision_results = await analyzer.analyze_images_batch_lite(image_urls, max_images=5)
+                        
+                        if vision_results:
+                            lite_score = vision_results.get('lite_score', 0)
+                            assessment = vision_results.get('assessment', 'Complete')
+                            print(f"[REPORT] ✅ Lite analysis complete: {lite_score}/30, {assessment}")
+                            logger.info(f"✅ Lite Vision analysis complete: score={lite_score}/30")
+                        else:
+                            print(f"[REPORT]    ❌ Lite Vision AI returned invalid result")
+                            vision_results = None
+                    except Exception as vision_error:
+                        print(f"[REPORT] ❌ Lite Vision AI FAILED: {vision_error}")
+                        logger.error(f"❌ Lite Vision AI failed: {vision_error}")
                         vision_results = None
-                except Exception as vision_error:
-                    print(f"[REPORT] ❌ Vision AI FAILED: {type(vision_error).__name__}: {vision_error}")
-                    logger.error(f"❌ Vision AI failed: {vision_error}")
-                    import traceback
-                    print(f"[REPORT] Traceback:")
-                    for line in traceback.format_exc().split('\n'):
-                        if line:
-                            print(f"[REPORT]   {line}")
-                    vision_results = None
+                else:
+                    print(f"[REPORT] 💎 PREMIUM ANALYSIS: Full 5-pillar detailed analysis...")
+                    try:
+                        analyzer = VisionAnalyzerV2()
+                        # 💎 Premium: Use full analysis (few-shot, ~2000 tokens)
+                        vision_results = await analyzer.analyze_images_batch(image_urls, max_images=5)
+                    
+                        if vision_results and vision_results.get('design_scorecard'):
+                            design_score = vision_results['design_scorecard'].get('total_design_score', 0)
+                            trust_status = vision_results.get('honest_marketing_status', 'Unknown')
+                            print(f"[REPORT] ✅ PHASE 3 Analysis complete: {design_score}/30, Trust: {trust_status}")
+                            logger.info(f"✅ Holistic Vision analysis complete: {design_score}/30")
+                        else:
+                            print(f"[REPORT]    ❌ Vision AI returned invalid schema")
+                            vision_results = None
+                    except Exception as vision_error:
+                        print(f"[REPORT] ❌ Vision AI FAILED: {type(vision_error).__name__}: {vision_error}")
+                        logger.error(f"❌ Vision AI failed: {vision_error}")
+                        import traceback
+                        print(f"[REPORT] Traceback:")
+                        for line in traceback.format_exc().split('\n'):
+                            if line:
+                                print(f"[REPORT]   {line}")
+                        vision_results = None
             else:
                 print(f"[REPORT] ⚠️  No image URLs available - using default vision scores")
                 logger.warning(f"⚠️  No images to analyze - using defaults")

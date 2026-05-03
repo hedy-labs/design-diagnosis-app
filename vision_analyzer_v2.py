@@ -88,7 +88,51 @@ class VisionAnalyzerV2:
             logger.info("📧 Falling back to default scores")
             return self._default_scores()
     
-    async def _analyze_property_holistically(self, image_urls: List[str]) -> Dict:
+    async def analyze_images_batch_lite(self, image_urls: List[str], max_images: int = 5) -> Dict:
+        """
+        🆓 LITE ANALYSIS: Minimal-token zero-shot analysis for Free Tier
+        
+        Token budget: ~500 tokens (vs. 2000+ for premium)
+        Output: Baseline 0-30 score + 3 major gaps
+        Quality: Good enough for "should I upgrade?" preview
+        
+        Args:
+            image_urls: List of image URLs
+            max_images: Max images (default 5 for lite)
+        
+        Returns:
+            {
+                'lite_score': 0-30,  # Scaled differently than premium (0-100)
+                'gaps': ['gap 1', 'gap 2', 'gap 3'],
+                'assessment': 'brief summary'
+            }
+        """
+        
+        if not image_urls:
+            logger.warning("⚠️  No images for lite analysis")
+            return {
+                'lite_score': 0,
+                'gaps': ['Unable to analyze', 'Please upload photos', 'Try Premium for details'],
+                'assessment': 'Analysis unavailable'
+            }
+        
+        try:
+            # Sample just 5 images for lite (save tokens)
+            sampled = image_urls[:max_images]
+            logger.info(f"🆓 LITE: Sampling {len(sampled)} images (token-efficient)")
+            
+            result = await self._analyze_lite_minimal(sampled)
+            return result
+        
+        except Exception as e:
+            logger.error(f"❌ Lite analysis failed: {e}")
+            return {
+                'lite_score': 0,
+                'gaps': ['Analysis error', 'Try again', 'Upgrade to Premium'],
+                'assessment': 'Analysis failed'
+            }
+    
+    async def _analyze_lite_minimal(self, image_urls: List[str]) -> Dict:
         """
         PHASE 3: Single Claude Vision call analyzing ALL images together.
         Returns holistic design scorecard with room diagnosis and fix recommendations.
@@ -250,6 +294,106 @@ EXPERIENCE LOGIC: How do these spaces MAKE GUESTS FEEL? Honest marketing = photo
         except Exception as e:
             logger.warning(f"⚠️  Deduplication failed: {e}. Using original URLs.")
             return image_urls[:max_count]
+    
+    async def _analyze_lite_minimal(self, image_urls: List[str]) -> Dict:
+        """
+        🆓 LITE ANALYSIS IMPLEMENTATION: Zero-shot, minimal tokens
+        
+        Calls Claude with VISION_PROMPT_LITE (no examples, no few-shot)
+        Returns JSON-only response with baseline score (0-30) and 3 gaps
+        """
+        
+        # Load lite prompt template
+        lite_prompt_path = os.path.join(os.path.dirname(__file__), "VISION_PROMPT_LITE.md")
+        
+        try:
+            with open(lite_prompt_path, 'r') as f:
+                prompt_content = f.read()
+        except FileNotFoundError:
+            logger.warning(f"⚠️  VISION_PROMPT_LITE.md not found, using fallback prompt")
+            prompt_content = """
+You are a property design reviewer. Analyze the photos and return ONLY JSON:
+{
+  "design_score": <0-30>,
+  "gap_1": "<gap>",
+  "gap_2": "<gap>",
+  "gap_3": "<gap>",
+  "brief_assessment": "<summary>"
+}
+"""
+        
+        # Prepare image data for Claude
+        content = [{"type": "text", "text": prompt_content}]
+        
+        # Add images
+        for image_url in image_urls:
+            try:
+                image_data = await self._fetch_image_data(image_url)
+                if image_data:
+                    content.append({
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": "image/jpeg",
+                            "data": image_data
+                        }
+                    })
+            except Exception as e:
+                logger.warning(f"⚠️  Failed to process image for lite: {e}")
+                continue
+        
+        try:
+            # Call Claude API (synchronous call wrapped in async)
+            import anthropic
+            client = anthropic.Anthropic(api_key=self.api_key)
+            
+            logger.info("🤖 Calling Claude for lite analysis...")
+            response = client.messages.create(
+                model=self.model,
+                max_tokens=500,  # Lite = short response
+                messages=[
+                    {
+                        "role": "user",
+                        "content": content
+                    }
+                ]
+            )
+            
+            # Extract JSON from response
+            response_text = response.content[0].text.strip()
+            
+            # Parse JSON (should be pure JSON)
+            import json
+            result = json.loads(response_text)
+            
+            logger.info(f"✅ Lite analysis complete: score={result.get('design_score', 0)}/30")
+            return {
+                'lite_score': result.get('design_score', 0),
+                'gaps': [
+                    result.get('gap_1', 'N/A'),
+                    result.get('gap_2', 'N/A'),
+                    result.get('gap_3', 'N/A')
+                ],
+                'assessment': result.get('brief_assessment', 'Analysis complete')
+            }
+        
+        except json.JSONDecodeError:
+            logger.error(f"❌ Failed to parse lite response as JSON: {response_text[:100]}")
+            return {
+                'lite_score': 15,  # Default middle score
+                'gaps': ['Unable to parse analysis', 'Please try Premium', 'For full details'],
+                'assessment': 'Analysis incomplete'
+            }
+        
+        except Exception as e:
+            logger.error(f"❌ Lite analysis error: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return {
+                'lite_score': 0,
+                'gaps': ['Analysis failed', 'Try again', 'Contact support'],
+                'assessment': 'Error during analysis'
+            }
     
     async def _analyze_single_image(self, image_url: str) -> Dict:
         """
