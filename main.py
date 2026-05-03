@@ -48,6 +48,95 @@ STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
 AMAZON_AFFILIATE_ID = os.getenv("AMAZON_AFFILIATE_ID", "")
 
+# 🔐 EMAIL VERIFICATION SECURITY
+# These endpoints require verified email BEFORE any Vision AI processing
+PROTECTED_ENDPOINTS = {
+    '/api/analyze-listing': 'Vision AI analysis',
+    '/api/analyze-uploaded-photos': 'Photo upload (API)',
+    '/api/submit-form': 'Form submission with potential report generation'
+}
+
+def get_verified_user_email_from_request(request: Request) -> Optional[str]:
+    """
+    🔐 SECURITY: Extract verified user email from request.
+    Returns None if user is not verified (blocks API call).
+    
+    Checks:
+    1. If form data contains email + verified flag
+    2. If session/cookie contains verified email
+    3. Otherwise blocks access
+    """
+    try:
+        # For form submissions, check if email was provided AND is in our verified list
+        # This is a placeholder for session-based auth (implement JWT tokens in production)
+        return None  # Placeholder - will be enhanced with session management
+    except Exception as e:
+        logger.warning(f"⚠️  Failed to extract user email: {e}")
+        return None
+
+async def require_email_verification(request: Request) -> dict:
+    """
+    🔐 SECURITY WALL: Hard block if user email not verified.
+    
+    Returns: { "email": str, "verified": bool }
+    Raises: HTTPException 401 if not verified
+    """
+    try:
+        # Try to extract email from form data (POST requests)
+        if request.method == "POST":
+            content_type = request.headers.get("content-type", "")
+            
+            # For JSON payloads
+            if "application/json" in content_type:
+                try:
+                    body = await request.json()
+                    email = body.get("email")
+                    if email and db:
+                        user = db.get_user_by_email(email)
+                        if user and user.is_verified:
+                            logger.info(f"✅ VERIFIED: {email} (user.is_verified=True)")
+                            return {"email": email, "verified": True}
+                        else:
+                            logger.warning(f"🔴 BLOCKED: {email} (user.is_verified={user.is_verified if user else 'N/A'})")
+                            raise HTTPException(
+                                status_code=401,
+                                detail=f"Email not verified. Please check your email for verification link."
+                            )
+                except Exception as json_err:
+                    logger.debug(f"Could not parse JSON body: {json_err}")
+            
+            # For form-data payloads
+            elif "multipart/form-data" in content_type:
+                try:
+                    form = await request.form()
+                    email = form.get("email")
+                    if email and db:
+                        user = db.get_user_by_email(email)
+                        if user and user.is_verified:
+                            logger.info(f"✅ VERIFIED: {email} (user.is_verified=True)")
+                            return {"email": email, "verified": True}
+                        else:
+                            logger.warning(f"🔴 BLOCKED: {email} (user.is_verified={user.is_verified if user else 'N/A'})")
+                            raise HTTPException(
+                                status_code=401,
+                                detail=f"Email not verified. Please check your email for verification link."
+                            )
+                except Exception as form_err:
+                    logger.debug(f"Could not parse form data: {form_err}")
+        
+        # If no email found or not verified, block access
+        logger.error(f"🔴 SECURITY: Email verification check failed - no valid email in request")
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized: Email verification required before processing photos."
+        )
+    
+    except HTTPException:
+        raise  # Re-raise HTTPException to return proper status code
+    except Exception as e:
+        logger.error(f"🔴 SECURITY ERROR: {e}")
+        raise HTTPException(status_code=500, detail="Authentication error")
+
 # DEFENSIVE: Create directories if they don't exist
 try:
     os.makedirs(REPORT_OUTPUT_DIR, exist_ok=True)
@@ -374,6 +463,8 @@ async def analyze_uploaded_photos(request: Request):
     """
     DECOUPLED UPLOAD ENDPOINT: Save photos only, NO Vision AI analysis
     
+    🔐 SECURITY: Requires verified email before accepting photo uploads
+    
     Input: multipart/form-data with 'photos' files
     Output: { "success": bool, "submission_id": int, "file_count": int }
     
@@ -383,6 +474,11 @@ async def analyze_uploaded_photos(request: Request):
     🔐 COST CONTROL: Enforce 5-image hard cap for Free Tier
     """
     try:
+        # 🔐 SECURITY WALL: Require email verification before accepting uploads
+        auth_result = await require_email_verification(request)
+        user_email = auth_result["email"]
+        logger.info(f"🔐 /api/analyze-uploaded-photos: {user_email} verified, accepting uploads")
+        
         form = await request.form()
         uploaded_files = form.getlist('photos')
         
@@ -470,12 +566,20 @@ async def test_scraper(request: Request):
     """
     GUARDRAIL: Test Airbnb scraper BEFORE payment redirect
     
+    🔐 SECURITY: Requires verified email before scraper test
+    
     Purpose: Verify Airbnb allows photo extraction before user proceeds to Stripe
     
     Input: { "url": "https://www.airbnb.com/rooms/..." }
     Output: { "success": bool, "photos": [...], "count": int, "error": str }
     """
     try:
+        # 🔐 SECURITY WALL: Require email verification before scraper test
+        # (Prevents malicious users from using our scraper infrastructure)
+        auth_result = await require_email_verification(request)
+        user_email = auth_result["email"]
+        logger.info(f"🔐 /api/test-scraper: {user_email} verified, testing scraper")
+        
         body = await request.json()
         airbnb_url = body.get("url")
         
@@ -527,14 +631,21 @@ async def test_scraper(request: Request):
 
 
 @app.post("/api/analyze-listing")
-async def analyze_listing(request_data: dict):
+async def analyze_listing(request_data: dict, request: Request):
     """
     Analyze Airbnb/VRBO listing: Extract photos + Vision AI analysis
+    
+    🔐 SECURITY: Requires verified email before Vision AI processing
     
     Input: { "airbnb_url": "https://www.airbnb.com/rooms/..." }
     Output: { "success": bool, "vision_results": {...} }
     """
     try:
+        # 🔐 SECURITY WALL: Require email verification before Vision AI call
+        auth_result = await require_email_verification(request)
+        user_email = auth_result["email"]
+        logger.info(f"🔐 /api/analyze-listing: {user_email} verified, proceeding with Vision AI")
+        
         airbnb_url = request_data.get("airbnb_url")
         if not airbnb_url:
             return {"success": False, "error": "Missing airbnb_url"}
@@ -599,12 +710,39 @@ async def analyze_listing(request_data: dict):
 async def submit_form(form_data: FormSubmitInput, background_tasks: BackgroundTasks, request: Request):
     """
     Submit property form with zero-friction for returning verified users
+    
+    🔐 SECURITY: HARDENED EMAIL VERIFICATION CHECK
+    - For FREE reports: Email must be verified BEFORE report generation
+    - For PREMIUM reports: Email verified before checkout session
+    - Unverified users CANNOT bypass to pay for premium
     """
     try:
         if not db:
             raise HTTPException(status_code=503, detail="Database service unavailable")
         
         logger.info(f"📝 Form submission from {form_data.email} for {form_data.property_name}")
+        
+        # 🔐 SECURITY: Check if user email is verified (critical for Free reports)
+        user = db.get_user_by_email(form_data.email)
+        is_email_verified = user.is_verified if user else False
+        
+        logger.info(f"🔐 Email verification status: {form_data.email} → is_verified={is_email_verified}")
+        
+        # FREE REPORT: Hard block if email not verified
+        if form_data.report_type == "free" and not is_email_verified:
+            logger.warning(f"🔴 BLOCKED: Unverified user {form_data.email} attempted FREE report without email verification")
+            raise HTTPException(
+                status_code=401,
+                detail="Email verification required before generating report. Check your email for verification link."
+            )
+        
+        # PREMIUM REPORT: Block unverified users from checkout (they must verify first)
+        if form_data.report_type == "premium" and not is_email_verified:
+            logger.warning(f"🔴 BLOCKED: Unverified user {form_data.email} attempted PREMIUM checkout without email verification")
+            raise HTTPException(
+                status_code=401,
+                detail="Please verify your email before upgrading to Premium. Check your email for verification link."
+            )
         
         # BACKEND VALIDATION FIX: Allow manual uploads without URL
         # Check if photos were manually uploaded
