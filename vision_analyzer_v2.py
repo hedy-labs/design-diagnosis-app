@@ -340,19 +340,36 @@ You are a property design reviewer. Analyze the photos and return ONLY JSON:
         # Prepare image data for Claude
         content = [{"type": "text", "text": prompt_content}]
         
-        # Add images
+        # Add images (support both cloud URLs and local data URIs)
         for image_url in image_urls:
             try:
-                image_data = await self._fetch_image_data(image_url)
-                if image_data:
+                # Cloud URLs (S3/R2): Pass directly to Claude
+                if image_url.startswith('http://') or image_url.startswith('https://'):
+                    logger.info(f"📸 Using cloud URL: {image_url[:60]}...")
                     content.append({
                         "type": "image",
                         "source": {
-                            "type": "base64",
-                            "media_type": "image/jpeg",
-                            "data": image_data
+                            "type": "url",
+                            "url": image_url
                         }
                     })
+                
+                # Local data URIs: Convert to base64
+                elif image_url.startswith('data:'):
+                    image_data = await self._fetch_image_data(image_url)
+                    if image_data:
+                        content.append({
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/jpeg",
+                                "data": image_data
+                            }
+                        })
+                
+                else:
+                    logger.warning(f"⚠️  Unknown image URL format: {image_url[:60]}...")
+            
             except Exception as e:
                 logger.warning(f"⚠️  Failed to process image for lite: {e}")
                 continue

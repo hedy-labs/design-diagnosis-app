@@ -417,6 +417,97 @@ async def get_recaptcha_config():
     }
 
 
+@app.post("/api/presigned-upload-url")
+async def get_presigned_upload_url(request: Request):
+    """
+    ☁️ CLOUD STORAGE: Generate pre-signed URL for direct browser upload
+    
+    Allows users to upload images directly to cloud bucket (S3/R2) without
+    data touching the Droplet's RAM or disk.
+    
+    Request Body:
+    {
+        "submission_id": 123,
+        "filename": "living_room.jpg",
+        "content_type": "image/jpeg"
+    }
+    
+    Response:
+    {
+        "upload_url": "https://...",        # URL for browser POST
+        "public_url": "https://...",        # Final image URL after upload
+        "upload_key": "design-diagnosis/uploads/...",
+        "expires_in": 3600,                 # Seconds until URL expires
+        "form_data": {...}                  # Fields for multipart/form-data
+    }
+    """
+    try:
+        from cloud_storage import get_cloud_manager
+        
+        # Parse request
+        try:
+            body = await request.json()
+        except:
+            body = await request.form()
+        
+        submission_id = body.get('submission_id')
+        filename = body.get('filename', 'image.jpg')
+        content_type = body.get('content_type', 'image/jpeg')
+        
+        if not submission_id:
+            return JSONResponse(
+                {"error": "submission_id required"},
+                status_code=400
+            )
+        
+        # Validate submission exists (if needed)
+        if db:
+            submission = db.get_form_submission(int(submission_id))
+            if not submission:
+                return JSONResponse(
+                    {"error": "Submission not found"},
+                    status_code=404
+                )
+        
+        # Generate pre-signed URL
+        cloud_manager = get_cloud_manager()
+        
+        if not cloud_manager.is_healthy():
+            logger.warning("⚠️  Cloud storage unhealthy, returning fallback")
+            return JSONResponse(
+                {
+                    "error": "Cloud storage unavailable",
+                    "fallback": True,
+                    "message": "Using server upload instead"
+                },
+                status_code=503
+            )
+        
+        presigned_info = cloud_manager.generate_presigned_upload_url(
+            submission_id=int(submission_id),
+            filename=filename,
+            content_type=content_type
+        )
+        
+        if not presigned_info:
+            return JSONResponse(
+                {"error": "Failed to generate pre-signed URL"},
+                status_code=500
+            )
+        
+        logger.info(f"✅ Pre-signed URL generated for submission {submission_id}")
+        return JSONResponse(presigned_info)
+    
+    except Exception as e:
+        logger.error(f"❌ Presigned URL generation error: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return JSONResponse(
+            {"error": str(e)},
+            status_code=500
+        )
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint"""
