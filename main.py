@@ -510,13 +510,17 @@ async def analyze_uploaded_photos(request: Request):
             logger.error("❌ No photos provided")
             return {"success": False, "error": "No photos provided"}, 400
         
-        # 🔐 COST CONTROL: Hard cap at 5 images (Free Tier limit)
-        if len(uploaded_files) > 5:
-            logger.warning(f"🔐 BLOCKED: User attempted to upload {len(uploaded_files)} photos (max 5 allowed)")
-            print(f"[UPLOAD] 🔐 COST CONTROL: {len(uploaded_files)} files rejected (max 5 for Free Tier)")
+        # 📊 TIERED PHOTO LIMITS: Free = 5, Premium = 20
+        report_type = form.get('report_type', 'free')  # Get tier from form
+        max_photos = 20 if report_type == 'premium' else 5
+        
+        if len(uploaded_files) > max_photos:
+            logger.warning(f"📊 BLOCKED: {report_type} tier user uploaded {len(uploaded_files)} (max {max_photos})")
+            print(f"[UPLOAD] 📊 LIMIT: {len(uploaded_files)} files rejected (max {max_photos} for {report_type})")
+            tier_msg = "20 photos for Premium" if report_type == 'premium' else "5 photos for Free Tier"
             return {
                 "success": False,
-                "error": f"Maximum 5 photos allowed. You provided {len(uploaded_files)}. Upgrade to Premium for unlimited photos.",
+                "error": f"Maximum {max_photos} photos for {report_type} tier. You provided {len(uploaded_files)}. {tier_msg}.",
                 "file_count": 0
             }, 400
         
@@ -705,10 +709,10 @@ async def analyze_listing(request_data: dict, request: Request):
             return {"success": False, "error": f"Could not extract photos: {str(e)}"}
         
         # Analyze with Vision AI
-        # 🔐 COST CONTROL: Hard cap at 5 images for Free Tier
-        logger.info(f"🤖 Analyzing {len(image_urls)} images with Vision AI (max 5 for Free Tier)...")
+        # 📊 TIERED LIMITS: Premium users get up to 20 photos
+        logger.info(f"🤖 Analyzing {len(image_urls)} images with Vision AI (max 20 for Premium)...")
         analyzer = VisionAnalyzerV2()
-        vision_results = await analyzer.analyze_images_batch(image_urls, max_images=5)
+        vision_results = await analyzer.analyze_images_batch(image_urls, max_images=20)
         
         if not vision_results:
             logger.warning("⚠️  Vision analysis failed")
@@ -1559,11 +1563,11 @@ async def generate_and_send_report(submission_id: int, report_type: str):
                         logger.error(f"❌ Lite Vision AI failed: {vision_error}")
                         vision_results = None
                 else:
-                    print(f"[REPORT] 💎 PREMIUM ANALYSIS: Full 5-pillar detailed analysis...")
+                    print(f"[REPORT] 💎 PREMIUM ANALYSIS: Full 5-pillar detailed analysis (up to 20 photos)...")
                     try:
                         analyzer = VisionAnalyzerV2()
-                        # 💎 Premium: Use full analysis (few-shot, ~2000 tokens)
-                        vision_results = await analyzer.analyze_images_batch(image_urls, max_images=5)
+                        # 💎 Premium: Use full analysis (few-shot, ~2000 tokens, MAX 20 photos)
+                        vision_results = await analyzer.analyze_images_batch(image_urls, max_images=20)
                     
                         if vision_results and vision_results.get('design_scorecard'):
                             design_score = vision_results['design_scorecard'].get('total_design_score', 0)

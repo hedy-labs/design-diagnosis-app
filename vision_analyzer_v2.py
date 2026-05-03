@@ -28,15 +28,17 @@ class VisionAnalyzerV2:
         self.model = os.getenv("CLAUDE_MODEL", "claude-3-5-sonnet-latest")
         logger.info(f"🤖 Vision Analyzer initialized with model: {self.model}")
     
-    async def analyze_images_batch(self, image_urls: List[str], max_images: int = 10) -> Dict:
+    async def analyze_images_batch(self, image_urls: List[str], max_images: int = 20) -> Dict:
         """
         Analyze entire property holistically using all uploaded images.
         
         PHASE 3: Single Claude call with all images, returns holistic design scorecard.
         
+        📊 PREMIUM TIER: Maximum 20 photos for comprehensive analysis
+        
         Args:
             image_urls: List of direct image URLs (from photo scraper) OR base64 data URIs
-            max_images: Max images to analyze (default 10)
+            max_images: Max images to analyze (default 20 for Premium Tier)
         
         Returns:
             {
