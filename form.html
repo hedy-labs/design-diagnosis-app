@@ -54,6 +54,76 @@
     <meta http-equiv="Expires" content="0">
     <!-- BUG FIX 2: Cache busting for external scripts -->
     <script src="https://js.stripe.com/v3/?v=2026-04-29-001"></script>
+    
+    <!-- 🔐 INVISIBLE CAPTCHA: Google reCAPTCHA v3 (Zero Friction) -->
+    <!-- Runs silently in background, no user interaction required -->
+    <!-- Scores 0.0-1.0 (bot → human), threshold-based blocking -->
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <script>
+        window.recaptchaReady = false;
+        
+        // Initialize reCAPTCHA when ready
+        window.grecaptchaCallback = function() {
+            window.recaptchaReady = true;
+            console.log('✅ reCAPTCHA v3 initialized and ready');
+        };
+        
+        // Load reCAPTCHA site key from backend
+        let recaptchaSiteKey = null;
+        
+        async function initRecaptcha() {
+            try {
+                const response = await fetch('/api/recaptcha-config');
+                if (!response.ok) throw new Error('Failed to load reCAPTCHA config');
+                
+                const config = await response.json();
+                if (!config.ready) {
+                    console.warn('⚠️  reCAPTCHA not configured on server');
+                    return;
+                }
+                
+                recaptchaSiteKey = config.site_key;
+                console.log('✅ reCAPTCHA site key loaded');
+            } catch (error) {
+                console.error('⚠️  Failed to load reCAPTCHA config:', error);
+            }
+        }
+        
+        // Initialize reCAPTCHA when document loads
+        document.addEventListener('DOMContentLoaded', initRecaptcha);
+        
+        // Execute reCAPTCHA token generation
+        async function executeRecaptcha(action = 'submit') {
+            if (!recaptchaSiteKey) {
+                console.warn('⚠️  reCAPTCHA site key not loaded yet');
+                // Try again in 500ms
+                await new Promise(r => setTimeout(r, 500));
+                if (!recaptchaSiteKey) {
+                    console.error('❌ reCAPTCHA not configured');
+                    return null;
+                }
+            }
+            
+            if (!window.recaptchaReady) {
+                console.warn('⚠️  reCAPTCHA not ready yet, retrying...');
+                // Fallback: wait a bit and try again
+                await new Promise(r => setTimeout(r, 500));
+                if (!window.recaptchaReady) {
+                    console.error('❌ reCAPTCHA failed to initialize');
+                    return null;
+                }
+            }
+            
+            try {
+                const token = await grecaptcha.execute(recaptchaSiteKey, { action });
+                console.log('✅ reCAPTCHA token generated for action:', action);
+                return token;
+            } catch (error) {
+                console.error('❌ reCAPTCHA execution error:', error);
+                return null;
+            }
+        }
+    </script>
     <style>
         * {
             margin: 0;
@@ -1139,6 +1209,18 @@
         async function handleSubmit(event) {
             event.preventDefault();
             
+            // 🔐 INVISIBLE CAPTCHA: Get reCAPTCHA v3 token (zero friction)
+            console.log('🤖 Executing reCAPTCHA v3 token generation...');
+            const recaptchaToken = await executeRecaptcha('submit');
+            
+            if (!recaptchaToken) {
+                console.error('🔴 reCAPTCHA token generation failed');
+                showMessage('❌ Security check failed. Please refresh and try again.', 'error');
+                return;
+            }
+            
+            console.log('✅ reCAPTCHA token obtained');
+            
             // CRITICAL FIX: Add persistent error logging before any navigation
             window.onerror = function(msg, url, lineNo, columnNo, error) {
                 console.error('🔴 UNCAUGHT ERROR - Persisting to localStorage');
@@ -1275,7 +1357,8 @@
                             guest_comfort_checklist: comfortValues,
                             report_type: report_type,
                             wants_marketing_emails: marketingEmailElement ? marketingEmailElement.checked : false,
-                            vision_results: null
+                            vision_results: null,
+                            recaptcha_token: recaptchaToken
                         };
                         
                         console.log('✅ PAYLOAD ASSEMBLY SUCCESS');

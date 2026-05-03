@@ -26,6 +26,9 @@ from anti_abuse import (
     run_anti_abuse_check
 )
 
+# 🔐 INVISIBLE CAPTCHA: Import reCAPTCHA module
+from recaptcha import verify_recaptcha_token, get_recaptcha_site_key
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -398,6 +401,19 @@ async def root():
     }
 
 
+@app.get("/api/recaptcha-config")
+async def get_recaptcha_config():
+    """
+    🔐 Get reCAPTCHA site key for frontend
+    
+    Frontend needs this key to initialize reCAPTCHA v3
+    """
+    return {
+        "site_key": get_recaptcha_site_key(),
+        "ready": bool(get_recaptcha_site_key())
+    }
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint"""
@@ -744,6 +760,21 @@ async def submit_form(form_data: FormSubmitInput, background_tasks: BackgroundTa
             raise HTTPException(status_code=503, detail="Database service unavailable")
         
         logger.info(f"📝 Form submission from {form_data.email} for {form_data.property_name}")
+        
+        # 🔐 INVISIBLE CAPTCHA: Validate reCAPTCHA v3 token (zero friction bot protection)
+        logger.info(f"🤖 Validating reCAPTCHA v3 token...")
+        is_human, captcha_score, captcha_error = await verify_recaptcha_token(
+            form_data.recaptcha_token, action="submit"
+        )
+        
+        if not is_human:
+            logger.warning(f"🔴 CAPTCHA BLOCKED: Score {captcha_score:.2f} - {captcha_error}")
+            raise HTTPException(
+                status_code=403,
+                detail=f"Security verification failed. Please try again. (Code: BOT_DETECTION)"
+            )
+        
+        logger.info(f"✅ reCAPTCHA passed: score={captcha_score:.2f} (human confirmed)")
         
         # 🔐 SECURITY: Check if user email is verified (critical for Free reports)
         user = db.get_user_by_email(form_data.email)

@@ -26,6 +26,7 @@ class FormSubmitInput(BaseModel):
     guest_comfort_checklist: List[str]
     report_type: str  # "free" or "premium"
     wants_marketing_emails: bool = False  # Opt-in for marketing emails
+    recaptcha_token: str  # 🔐 reCAPTCHA v3 token (invisible CAPTCHA)
     
     @validator('report_type')
     def validate_report_type(cls, v):
@@ -37,6 +38,12 @@ class FormSubmitInput(BaseModel):
     def validate_email(cls, v):
         if '@' not in v:
             raise ValueError("Invalid email address")
+        return v
+    
+    @validator('recaptcha_token')
+    def validate_recaptcha_token(cls, v):
+        if not v or len(v.strip()) == 0:
+            raise ValueError("reCAPTCHA token is required")
         return v
 
 
