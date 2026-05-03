@@ -204,6 +204,31 @@ class DesignDiagnosisDB:
             )
         """)
         
+        # 🔐 ANTI-ABUSE: Processed Images table (Layer 3: Image Fingerprinting)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS processed_images (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                image_hash TEXT NOT NULL UNIQUE,
+                submission_id INTEGER NOT NULL,
+                file_name TEXT NOT NULL,
+                report_type TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (submission_id) REFERENCES form_submissions(id)
+            )
+        """)
+        
+        # 🔐 ANTI-ABUSE: IP Rate Limits table (Layer 4: IP Rate Limiting)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS ip_rate_limits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                client_ip TEXT NOT NULL,
+                submission_id INTEGER NOT NULL,
+                report_type TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (submission_id) REFERENCES form_submissions(id)
+            )
+        """)
+        
         conn.commit()
         
         # Add missing columns to existing tables (migration safety)

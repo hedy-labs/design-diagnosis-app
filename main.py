@@ -18,6 +18,14 @@ import logging
 import shutil
 import stripe
 
+# 🔐 ANTI-ABUSE: Import anti-abuse module
+from anti_abuse import (
+    normalize_email, is_burner_email, extract_listing_id,
+    check_duplicate_listing_30days, hash_image_file, check_duplicate_image,
+    store_image_hash, get_client_ip, check_ip_rate_limit, store_ip_access,
+    run_anti_abuse_check
+)
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -525,6 +533,15 @@ async def analyze_uploaded_photos(request: Request):
                 with open(temp_path, 'wb') as f:
                     f.write(content)
                 
+                # 🔐 LAYER 3: Image fingerprinting (SHA256 hash)
+                image_hash = hash_image_file(temp_path, algorithm='sha256')
+                if image_hash:
+                    # Store in session for later use (before we have submission_id)
+                    if not hasattr(request.app, '_image_hashes'):
+                        request.app._image_hashes = []
+                    request.app._image_hashes.append((image_hash, file.filename))
+                    logger.info(f"📷 Image fingerprinted: {image_hash[:16]}...")
+                
                 # Verify file was written
                 if os.path.exists(temp_path):
                     file_size = os.path.getsize(temp_path)
@@ -715,6 +732,12 @@ async def submit_form(form_data: FormSubmitInput, background_tasks: BackgroundTa
     - For FREE reports: Email must be verified BEFORE report generation
     - For PREMIUM reports: Email verified before checkout session
     - Unverified users CANNOT bypass to pay for premium
+    
+    🔐 ANTI-ABUSE: 4-Layer Defense System
+    - Layer 1: Email normalization & burner block
+    - Layer 2: URL duplicate check (30-day window)
+    - Layer 3: Image fingerprinting
+    - Layer 4: IP rate limiting (1 free report per IP per 30 days)
     """
     try:
         if not db:
@@ -743,6 +766,18 @@ async def submit_form(form_data: FormSubmitInput, background_tasks: BackgroundTa
                 status_code=401,
                 detail="Please verify your email before upgrading to Premium. Check your email for verification link."
             )
+        
+        # 🔐 ANTI-ABUSE: Run 4-layer defense check (email, URL, image, IP)
+        client_ip = get_client_ip(request)
+        is_blocked, block_reason = run_anti_abuse_check(
+            db, form_data.email, form_data.airbnb_url, client_ip, form_data.report_type
+        )
+        
+        if is_blocked:
+            logger.warning(f"🔐 ANTI-ABUSE BLOCK: {form_data.email} from {client_ip} - {block_reason}")
+            raise HTTPException(status_code=429, detail=block_reason)  # 429 Too Many Requests
+        
+        logger.info(f"✅ Passed anti-abuse checks: {form_data.email} from {client_ip}")
         
         # BACKEND VALIDATION FIX: Allow manual uploads without URL
         # Check if photos were manually uploaded
@@ -839,6 +874,9 @@ async def submit_form(form_data: FormSubmitInput, background_tasks: BackgroundTa
                 print(f"[FORM] ❌ Photo move error: {move_err}")
         
         logger.info(f"✅ Submission saved with ID: {submission.id}")
+        
+        # 🔐 ANTI-ABUSE: Record IP access for rate limiting
+        store_ip_access(db, client_ip, submission.id, form_data.report_type)
         
         # ZERO-FRICTION PATH: If user already verified, skip email verification
         if is_returning_verified:
