@@ -3,16 +3,44 @@ Background Task Workers
 Executes heavy analysis tasks asynchronously
 
 Used by: RQ workers, Celery workers, or direct execution
+
+UPDATED: 429 Shield (Rate Limit Resilience)
+- Exponential backoff on Vision API rate limits
+- Mandatory pacing between image calls
+- User-facing transparency during waits
 """
 
 import logging
 import asyncio
+import time
 from typing import List, Dict, Any
 from datetime import datetime
 import json
 import os
 
 logger = logging.getLogger(__name__)
+
+# Import rate limiter
+try:
+    from rate_limiter import retry_with_backoff, throttle_calls, get_rate_limit_message, detect_rate_limit
+except ImportError:
+    logger.warning("⚠️  rate_limiter not found, using fallback (no rate limit protection)")
+    # Fallback: no-op decorators
+    def retry_with_backoff(*args, **kwargs):
+        def decorator(f):
+            return f
+        return decorator
+    
+    def throttle_calls(*args, **kwargs):
+        def decorator(f):
+            return f
+        return decorator
+    
+    def get_rate_limit_message(a, b):
+        return "Processing your analysis..."
+    
+    def detect_rate_limit(*args, **kwargs):
+        return None
 
 def run_premium_vision_analysis(
     submission_id: int,
@@ -71,23 +99,61 @@ def run_premium_vision_analysis(
             
             analyzer = VisionAnalyzerV2()
             
-            # Run async vision analysis
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            vision_results = loop.run_until_complete(
-                analyzer.analyze_images_batch(image_urls, max_images=20)
-            )
-            loop.close()
+            # ============================================================
+            # RATE LIMITED: Vision analysis with 429 Shield protection
+            # ============================================================
+            retry_attempt = 0
+            max_retry_attempts = 3
             
-            if not vision_results:
-                raise Exception("Vision analysis returned empty results")
-            
-            logger.info(f"✅ Vision analysis complete")
-            
-        except Exception as e:
-            logger.error(f"❌ Vision analysis failed: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
+            while retry_attempt < max_retry_attempts:
+                try:
+                    # Run async vision analysis (with mandatory pacing)
+                    logger.info(f"🔄 Vision analysis attempt {retry_attempt + 1}/{max_retry_attempts}")
+                    
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    vision_results = loop.run_until_complete(
+                        analyzer.analyze_images_batch(image_urls, max_images=20)
+                    )
+                    loop.close()
+                    
+                    if not vision_results:
+                        raise Exception("Vision analysis returned empty results")
+                    
+                    logger.info(f"✅ Vision analysis complete")
+                    break  # Success, exit retry loop
+                
+                except Exception as e:
+                    error_msg = str(e)
+                    retry_attempt += 1
+                    
+                    # Check if rate limited (429 or 503)
+                    is_rate_limit = '429' in error_msg or '503' in error_msg or 'rate' in error_msg.lower()
+                    
+                    if is_rate_limit and retry_attempt < max_retry_attempts:
+                        # Calculate backoff
+                        wait_time = 10 * (2 ** (retry_attempt - 1))  # 10s, 20s, 40s
+                        
+                        logger.warning(f"⏳ Rate limit detected. Waiting {wait_time}s before retry {retry_attempt + 1}/{max_retry_attempts}")
+                        
+                        # Update job metadata with rate limit message
+                        if job:
+                            job.meta['current_step'] = 'analyzing_images'
+                            job.meta['status_message'] = get_rate_limit_message(retry_attempt, max_retry_attempts)
+                            job.meta['progress'] = 20 + (retry_attempt * 5)  # Increment progress
+                            job.save_meta()
+                        
+                        # Wait with backoff
+                        time.sleep(wait_time)
+                    else:
+                        # Not rate limited or max retries reached
+                        logger.error(f"❌ Vision analysis failed: {e}")
+                        import traceback
+                        logger.error(traceback.format_exc())
+                        raise
+        
+        except Exception:
+            # Vision analysis completely failed after retries
             raise
         
         # ============================================================
