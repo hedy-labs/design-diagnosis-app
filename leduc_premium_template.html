@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leduc Property - Premium 8-Page Design Diagnostic</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+        
+        .report {
+            max-width: 900px;
+            margin: 20px auto;
+            background: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        
+        .page {
+            page-break-after: always;
+            padding: 60px 50px;
+            min-height: 11in;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .page:last-child {
+            border-bottom: none;
+        }
+        
+        /* Page 1: Title Page */
+        .page-1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .page-1 h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+        
+        .page-1 .score-box {
+            background: rgba(255,255,255,0.2);
+            padding: 30px 50px;
+            border-radius: 10px;
+            margin: 30px 0;
+            backdrop-filter: blur(10px);
+        }
+        
+        .vitality-score {
+            font-size: 64px;
+            font-weight: 700;
+            color: #ffd700;
+        }
+        
+        .grade {
+            font-size: 32px;
+            margin-top: 10px;
+        }
+        
+        .page-1 p {
+            font-size: 18px;
+            margin-top: 30px;
+            max-width: 600px;
+        }
+        
+        /* Page 2: The Situation */
+        .page-2 h2 {
+            color: #667eea;
+            font-size: 36px;
+            margin-bottom: 30px;
+        }
+        
+        .situation-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 40px;
+        }
+        
+        .metric {
+            background: #f9f9f9;
+            padding: 20px;
+            border-left: 4px solid #667eea;
+            border-radius: 5px;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #999;
+            margin-bottom: 5px;
+        }
+        
+        .metric-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .metric-note {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+        }
+        
+        /* Page 3: Top 3 Fixes */
+        .page-3 h2 {
+            color: #667eea;
+            font-size: 36px;
+            margin-bottom: 30px;
+        }
+        
+        .fix-card {
+            background: #f9f9f9;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-radius: 5px;
+            border-left: 4px solid #764ba2;
+        }
+        
+        .fix-priority {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .fix-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #333;
+            margin: 10px 0;
+        }
+        
+        .fix-roi {
+            font-size: 14px;
+            color: #667eea;
+            font-weight: 600;
+            margin: 10px 0;
+        }
+        
+        .fix-description {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.7;
+        }
+        
+        /* Pages 4-7: Five Pillars */
+        .pillar-page h2 {
+            color: #667eea;
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        
+        .pillar-subtitle {
+            font-size: 14px;
+            color: #999;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+        }
+        
+        .pillar-score {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 30px;
+        }
+        
+        .pillar-analysis {
+            background: #f9f9f9;
+            padding: 25px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .analysis-section {
+            margin-bottom: 20px;
+        }
+        
+        .analysis-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .analysis-content {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.7;
+        }
+        
+        .issues-list {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 3px;
+            margin: 15px 0;
+        }
+        
+        .issues-list strong {
+            display: block;
+            margin-bottom: 8px;
+            color: #856404;
+        }
+        
+        .issues-list ul {
+            margin-left: 20px;
+            color: #856404;
+        }
+        
+        .issues-list li {
+            margin-bottom: 5px;
+        }
+        
+        .recommendations-list {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            border-radius: 3px;
+            margin: 15px 0;
+        }
+        
+        .recommendations-list strong {
+            display: block;
+            margin-bottom: 8px;
+            color: #155724;
+        }
+        
+        .recommendations-list ul {
+            margin-left: 20px;
+            color: #155724;
+        }
+        
+        .recommendations-list li {
+            margin-bottom: 5px;
+        }
+        
+        /* Page 8: Shopping List & CTA */
+        .page-8 h2 {
+            color: #667eea;
+            font-size: 36px;
+            margin-bottom: 30px;
+        }
+        
+        .shopping-tier {
+            margin-bottom: 40px;
+        }
+        
+        .tier-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .shopping-list {
+            list-style: none;
+        }
+        
+        .shopping-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .shopping-item strong {
+            color: #333;
+        }
+        
+        .shopping-item .price {
+            float: right;
+            color: #667eea;
+            font-weight: 700;
+        }
+        
+        .cta-section {
+            margin-top: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .cta-section h3 {
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+        
+        .cta-section p {
+            font-size: 14px;
+            margin-bottom: 20px;
+            line-height: 1.7;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: white;
+            color: #667eea;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .cta-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        /* Utility Classes */
+        h1, h2, h3 {
+            font-weight: 700;
+        }
+        
+        .highlight {
+            background: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        
+        .alert {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            border-radius: 3px;
+            margin: 20px 0;
+            color: #721c24;
+        }
+        
+        .success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            border-radius: 3px;
+            margin: 20px 0;
+            color: #155724;
+        }
+        
+        @media print {
+            body {
+                background: white;
+            }
+            
+            .report {
+                box-shadow: none;
+                margin: 0;
+            }
+            
+            .page {
+                page-break-after: always;
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="report">
+        <!-- PAGE 1: TITLE PAGE -->
+        <div class="page page-1">
+            <h1>🏠 Leduc Property</h1>
+            <h2>Premium Design Diagnostic Report</h2>
+            <div class="score-box">
+                <div class="vitality-score" id="vitality-score">--/100</div>
+                <div class="grade" id="grade">Grade: --</div>
+            </div>
+            <p>A comprehensive 8-page analysis of your property's design strengths and opportunities for revenue optimization.</p>
+            <p style="margin-top: 20px; font-size: 14px; opacity: 0.9;">Generated by Design Diagnosis Premium Analysis Engine</p>
+        </div>
+
+        <!-- PAGE 2: THE SITUATION -->
+        <div class="page page-2">
+            <h2>📊 The Situation</h2>
+            <p>Your property has solid fundamentals but is missing the design intentionality that converts casual browsers into confirmed bookings. Below is a snapshot of where you stand across five critical dimensions:</p>
+            
+            <div class="situation-grid">
+                <div class="metric">
+                    <div class="metric-label">Spatial Flow</div>
+                    <div class="metric-value" id="spatial-score">--/25</div>
+                    <div class="metric-note" id="spatial-note">Score pending</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Lighting Quality</div>
+                    <div class="metric-value" id="lighting-score">--/20</div>
+                    <div class="metric-note" id="lighting-note">Score pending</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Sensory & Textiles</div>
+                    <div class="metric-value" id="sensory-score">--/20</div>
+                    <div class="metric-note" id="sensory-note">Score pending</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Power & Connectivity</div>
+                    <div class="metric-value" id="power-score">--/10</div>
+                    <div class="metric-note" id="power-note">Score pending</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Intentionality & Soul</div>
+                    <div class="metric-value" id="intentionality-score">--/15</div>
+                    <div class="metric-note" id="intentionality-note">Score pending</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Professional Photography</div>
+                    <div class="metric-value" id="photography-impact">40%</div>
+                    <div class="metric-note">Potential revenue increase</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE 3: TOP 3 FIXES -->
+        <div class="page page-3">
+            <h2>🎯 Your Top 3 Fixes</h2>
+            
+            <div class="fix-card">
+                <div class="fix-priority">PRIORITY 1</div>
+                <div class="fix-title" id="fix1-title">Fix 1</div>
+                <div class="fix-roi" id="fix1-roi">ROI: Pending</div>
+                <div class="fix-description" id="fix1-description">Description pending</div>
+            </div>
+            
+            <div class="fix-card">
+                <div class="fix-priority">PRIORITY 2</div>
+                <div class="fix-title" id="fix2-title">Fix 2</div>
+                <div class="fix-roi" id="fix2-roi">ROI: Pending</div>
+                <div class="fix-description" id="fix2-description">Description pending</div>
+            </div>
+            
+            <div class="fix-card">
+                <div class="fix-priority">PRIORITY 3</div>
+                <div class="fix-title" id="fix3-title">Fix 3</div>
+                <div class="fix-roi" id="fix3-roi">ROI: Pending</div>
+                <div class="fix-description" id="fix3-description">Description pending</div>
+            </div>
+        </div>
+
+        <!-- PAGE 4: PILLAR 1 - SPATIAL FLOW -->
+        <div class="page page-4 pillar-page">
+            <h2>Pillar 1: Spatial Flow & Ergonomics</h2>
+            <div class="pillar-subtitle">The 60cm Rule, Landing Strips, and Floating Furniture</div>
+            
+            <div class="pillar-score" id="spatial-pillar-score">Score: --/25</div>
+            
+            <div class="pillar-analysis">
+                <div class="analysis-section">
+                    <div class="analysis-title">The 60cm Walkway Rule</div>
+                    <div class="analysis-content" id="spatial-60cm">
+                        <p>Every walkway between furniture must be at least 60cm wide. Below this threshold, guests feel cramped and must navigate sideways.</p>
+                    </div>
+                </div>
+                
+                <div class="analysis-section">
+                    <div class="analysis-title">⚠️ Floating Furniture Detection</div>
+                    <div class="analysis-content" id="spatial-floating">
+                        <p>Your sofa is positioned in the middle of the room (not against a wall). This is "floating furniture."</p>
+                        <p style="margin-top: 10px;"><strong>CRITICAL RULE:</strong> Never recommend gallery walls or wall-mounted art above floating furniture. Instead:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>✅ Ground the sofa with an 8x10 area rug</li>
+                            <li>✅ Add a console table behind it as a subtle divider</li>
+                            <li>✅ Use floating shelves (wall-mounted but minimal visual weight)</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="analysis-section">
+                    <div class="analysis-title">Landing Strip (Entry Access)</div>
+                    <div class="analysis-content" id="spatial-entry">
+                        <p>Guests need minimum 1 meter of clear floor space at entry for luggage drop. Your entryway is compact.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE 5: PILLAR 2 - LIGHTING -->
+        <div class="page page-5 pillar-page">
+            <h2>Pillar 2: Lighting & Optical Health</h2>
+            <div class="pillar-subtitle">Overhead-Only Penalty, Color Temperature, and Institutional Feel</div>
+            
+            <div class="pillar-score" id="lighting-pillar-score">Score: --/20</div>
+            
+            <div class="pillar-analysis">
+                <div class="analysis-section">
+                    <div class="analysis-title">⚠️ The Overhead-Only Penalty</div>
+                    <div class="analysis-content" id="lighting-overhead">
+                        <p>Your bedroom relies on a single overhead light plus a small bedside lamp. This creates a <span class="highlight">clinical, institutional feel</span> that says "hotel hallway" not "relaxing escape."</p>
+                        <p style="margin-top: 10px;"><strong>Cost impact:</strong> -3 points from pillar score.</p>
+                    </div>
+                </div>
+                
+                <div class="analysis-section">
+                    <div class="analysis-title">Color Temperature Assessment</div>
+                    <div class="analysis-content" id="lighting-temperature">
+                        <p>Your overhead light appears to be cool-white (>4100K), while the bedside lamp is warm. This creates a <span class="highlight">jarring, disjointed feel</span>.</p>
+                        <p style="margin-top: 10px;"><strong>Ideal:</strong> All warm (2700-3000K) for cohesion.</p>
+                    </div>
+                </div>
+                
+                <div class="analysis-section">
+                    <div class="analysis-title">Layering Solution</div>
+                    <div class="analysis-content" id="lighting-solution">
+                        <p>Upgrade to task + accent + ambient lighting:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>✅ Add a second bedside lamp (warm 2700K)</li>
+                            <li>✅ Consider a swag pendant or wall-mounted reading lamp</li>
+                            <li>✅ Replace overhead bulb with warm 2700K dimmable option</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE 6: PILLAR 3 - SENSORY & TEXTILES -->
+        <div class="page page-6 pillar-page">
+            <h2>Pillar 3: Sensory & Textile Logic</h2>
+            <div class="pillar-subtitle">Material Quality, Texture, and Monochromatic Clinical Design</div>
+            
+            <div class="pillar-score" id="sensory-pillar-score">Score: --/20</div>
+            
+            <div class="pillar-analysis">
+                <div class="analysis-section">
+                    <div class="analysis-title">⚠️ The Monochromatic Problem</div>
+                    <div class="analysis-content" id="sensory-monochromatic">
+                        <p>Your property features a <span class="highlight">black/white/gray palette</span> throughout. While "minimalist," this reads as <span class="highlight">sterile and institutional</span>.</p>
+                        <div class="alert">
+                            <strong>COST IMPACT:</strong><br>
+                            • -5 points from vitality score<br>
+                            • -$15-25/night in perceived guest value<br>
+                            • 20-30% reduction in booking conversion<br>
+                            • Monthly revenue loss: -$450-750
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="analysis-section">
+                    <div class="analysis-title">Material Quality Assessment</div>
+                    <div class="analysis-content" id="sensory-materials">
+                        <p>Your bedding appears functional but lacks luxury signaling. Linens show minimal texture. No accent pillows or throws visible.</p>
+                    </div>
+                </div>
+                
+                <div class="analysis-section">
+                    <div class="analysis-title">✅ The Warmth Injection Solution</div>
+                    <div class="analysis-content" id="sensory-solution">
+                        <p><strong>Do NOT repaint or overthink it.</strong> Add warmth through textiles and color pops:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>✅ Cream or soft white duvet (instead of grey)</li>
+                            <li>✅ Charcoal throw + 2-3 accent pillows (navy, rust, or sage)</li>
+                            <li>✅ 8x10 area rug (warm tone like taupe or warm gray)</li>
+                            <li>✅ One accent color pop (throw blanket, wall art, plant)</li>
+                        </ul>
+                        <p style="margin-top: 10px;"><strong>Budget:</strong> $200-400 total. <strong>Expected ROI:</strong> +$150-250/month.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE 7: PILLARS 4 & 5 -->
+        <div class="page page-7 pillar-page">
+            <h2>Pillars 4 & 5: Power/Connectivity & Intentionality</h2>
+            
+            <div style="margin-bottom: 40px;">
+                <h3 style="color: #667eea; font-size: 20px; margin-bottom: 15px;">Pillar 4: Power & Connectivity (--/10)</h3>
+                <div class="pillar-analysis">
+                    <div class="analysis-section">
+                        <div class="analysis-title">Outlet & USB Audit</div>
+                        <div class="analysis-content" id="power-audit">
+                            <p>Visible outlets in bedroom: Limited. USB ports: None visible.</p>
+                            <p style="margin-top: 10px;"><strong>Modern guest expectation:</strong> 1-2 USB ports per nightstand for phone/tablet charging.</p>
+                        </div>
+                    </div>
+                    <div class="analysis-section">
+                        <div class="analysis-title">Recommendation</div>
+                        <div class="analysis-content">
+                            <ul style="margin-left: 20px;">
+                                <li>✅ Add USB-outlet combo to at least one nightstand</li>
+                                <li>✅ Consider a lamp with integrated USB charging</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div>
+                <h3 style="color: #667eea; font-size: 20px; margin-bottom: 15px;">Pillar 5: Intentionality & Soul (--/15)</h3>
+                <div class="pillar-analysis">
+                    <div class="analysis-section">
+                        <div class="analysis-title">Curated vs. Assembled</div>
+                        <div class="analysis-content" id="intentionality-assessment">
+                            <p>Your property reads as <span class="highlight">"Assembled"</span> — furniture placed functional, not curated. No clear design narrative.</p>
+                        </div>
+                    </div>
+                    <div class="analysis-section">
+                        <div class="analysis-title">Host Mindset Signals</div>
+                        <div class="analysis-content">
+                            <p><strong>Positive:</strong> Clean, no fragile items, accessible. <strong>Gap:</strong> No "Welcome!" signals (plants, art, intentional touches).</p>
+                        </div>
+                    </div>
+                    <div class="analysis-section">
+                        <div class="analysis-title">Path to Curation</div>
+                        <div class="analysis-content">
+                            <p>Add 3-4 intentional touches:</p>
+                            <ul style="margin-left: 20px; margin-top: 10px;">
+                                <li>✅ Small potted plant (bedroom or living area)</li>
+                                <li>✅ One piece of wall art or mirror</li>
+                                <li>✅ Textured throw on sofa or bed</li>
+                                <li>✅ Small wooden tray or decorative object on nightstand</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE 8: SHOPPING LIST & CTA -->
+        <div class="page page-8">
+            <h2>🛒 Shopping List by Priority</h2>
+            
+            <div class="shopping-tier">
+                <div class="tier-name">Tier 1: Immediate Impact ($200-400)</div>
+                <ul class="shopping-list">
+                    <li class="shopping-item"><strong>Bedding:</strong> Cream/white duvet set (Egyptian cotton) <span class="price">$120-180</span></li>
+                    <li class="shopping-item"><strong>Textiles:</strong> Charcoal throw + 2-3 accent pillows <span class="price">$60-100</span></li>
+                    <li class="shopping-item"><strong>Rug:</strong> 8x10 area rug (warm tone) <span class="price">$150-200</span></li>
+                </ul>
+            </div>
+            
+            <div class="shopping-tier">
+                <div class="tier-name">Tier 2: Sustained Revenue ($200-300)</div>
+                <ul class="shopping-list">
+                    <li class="shopping-item"><strong>Lighting:</strong> Second bedside lamp (warm 2700K) <span class="price">$40-60</span></li>
+                    <li class="shopping-item"><strong>Lighting:</strong> Swag pendant or wall-mounted reading lamp <span class="price">$60-120</span></li>
+                    <li class="shopping-item"><strong>Power:</strong> USB outlet combo for nightstand <span class="price">$20-30</span></li>
+                </ul>
+            </div>
+            
+            <div class="shopping-tier">
+                <div class="tier-name">Tier 3: Intentional Touches ($50-150)</div>
+                <ul class="shopping-list">
+                    <li class="shopping-item"><strong>Decor:</strong> Small potted plant + planter <span class="price">$15-30</span></li>
+                    <li class="shopping-item"><strong>Wall Art:</strong> Canvas or framed print <span class="price">$30-60</span></li>
+                    <li class="shopping-item"><strong>Accessories:</strong> Wooden tray, decorative objects <span class="price">$20-40</span></li>
+                </ul>
+            </div>
+            
+            <div class="success">
+                <strong>Total Potential Investment:</strong> $450-850<br>
+                <strong>Expected Monthly Revenue Increase:</strong> +$300-500<br>
+                <strong>ROI Timeline:</strong> 1-2 months (+ professional photography = 1 night)
+            </div>
+            
+            <div class="cta-section">
+                <h3>Ready to Transform Your Property?</h3>
+                <p>Your property has tremendous potential. With strategic design fixes and professional photography, you can unlock 40%+ revenue growth while maintaining the minimalist aesthetic you love.</p>
+                <p><strong>Next Step:</strong> Schedule a 15-minute consultation with our design strategist to discuss your specific goals and budget.</p>
+                <a href="#consultation" class="cta-button">Book Consultation ($99)</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
