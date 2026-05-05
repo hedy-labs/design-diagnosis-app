@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leduc Property - Premium 8-Page Design Diagnostic</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+        
+        .report {
+            max-width: 900px;
+            margin: 20px auto;
+            background: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        
+        .page {
+            page-break-after: always;
+            padding: 60px 50px;
+            min-height: 11in;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .page:last-child {
+            border-bottom: none;
+        }
+        
+        /* Page 1: Title Page */
+        .page-1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .page-1 h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+        
+        .page-1 .score-box {
+            background: rgba(255,255,255,0.2);
+            padding: 30px 50px;
+            border-radius: 10px;
+            margin: 30px 0;
+            backdrop-filter: blur(10px);
+        }
+        
+        .vitality-score {
+            font-size: 64px;
+            font-weight: 700;
+            color: #ffd700;
+        }
+        
+        .grade {
+            font-size: 32px;
+            margin-top: 10px;
+        }
+        
+        .page-1 p {
+            font-size: 18px;
+            margin-top: 30px;
+            max-width: 600px;
+        }
+        
+        /* Page 2: The Situation */
+        .page-2 h2 {
+            color: #667eea;
+            font-size: 36px;
+            margin-bottom: 30px;
+        }
+        
+        .situation-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 40px;
+        }
+        
+        .metric {
+            background: #f9f9f9;
+            padding: 20px;
+            border-left: 4px solid #667eea;
+            border-radius: 5px;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #999;
+            margin-bottom: 5px;
+        }
+        
+        .metric-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .metric-note {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+        }
+        
+        /* Page 3: Top 3 Fixes */
+        .page-3 h2 {
+            color: #667eea;
+            font-size: 36px;
+            margin-bottom: 30px;
+        }
+        
+        .fix-card {
+            background: #f9f9f9;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-radius: 5px;
+            border-left: 4px solid #764ba2;
+        }
+        
+        .fix-priority {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .fix-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #333;
+            margin: 10px 0;
+        }
+        
+        .fix-timeframe {
+            font-size: 14px;
+            color: #667eea;
+            font-weight: 600;
+            margin: 10px 0;
+        }
+        
+        .fix-description {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.7;
+        }
+        
+        /* Pages 4-7: Five Pillars */
+        .pillar-page h2 {
+            color: #667eea;
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        
+        .pillar-subtitle {
+            font-size: 14px;
+            color: #999;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+        }
+        
+        .pillar-score {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 30px;
+        }
+        
+        .pillar-analysis {
+            background: #f9f9f9;
+            padding: 25px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .analysis-section {
+            margin-bottom: 20px;
+        }
+        
+        .analysis-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .analysis-content {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.7;
+        }
+        
+        .analysis-content p {
+            margin-bottom: 10px;
+        }
+        
+        .analysis-content ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        
+        .analysis-content li {
+            margin-bottom: 5px;
+        }
+        
+        .insight-box {
+            background: #e8f4f8;
+            border-left: 4px solid #0288d1;
+            padding: 15px;
+            border-radius: 3px;
+            margin: 15px 0;
+            color: #01579b;
+            font-size: 14px;
+        }
+        
+        .highlight {
+            background: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        
+        /* Page 8: Shopping List & CTA */
+        .page-8 h2 {
+            color: #667eea;
+            font-size: 36px;
+            margin-bottom: 30px;
+        }
+        
+        .shopping-tier {
+            margin-bottom: 40px;
+        }
+        
+        .tier-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .shopping-list {
+            list-style: none;
+        }
+        
+        .shopping-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .shopping-item strong {
+            color: #333;
+        }
+        
+        .shopping-item .note {
+            float: right;
+            color: #667eea;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        
+        .cta-section {
+            margin-top: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .cta-section h3 {
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+        
+        .cta-section p {
+            font-size: 14px;
+            margin-bottom: 20px;
+            line-height: 1.7;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: white;
+            color: #667eea;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .cta-button:hover {
+            transform: scale(1.05);
+        }
+        
+        @media print {
+            body {
+                background: white;
+            }
+            
+            .report {
+                box-shadow: none;
+                margin: 0;
+            }
+            
+            .page {
+                page-break-after: always;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="report">
+        <!-- PAGE 1: TITLE PAGE -->
+        <div class="page page-1">
+            <h1>🏠 Leduc Property</h1>
+            <h2>Premium Design Diagnostic</h2>
+            <div class="score-box">
+                <div class="vitality-score">58/100</div>
+                <div class="grade">Grade: C+</div>
+            </div>
+            <p>A comprehensive 8-page expert analysis of your property's design strengths, opportunities, and a strategic roadmap for optimization.</p>
+            <p style="margin-top: 20px; font-size: 14px; opacity: 0.9;">Design Diagnosis Premium Analysis | May 5, 2026</p>
+        </div>
+
+        <!-- PAGE 2: THE SITUATION -->
+        <div class="page page-2">
+            <h2>📊 The Situation</h2>
+            <p style="margin-bottom: 20px;">Your property has a solid foundation with good spatial flow and functional layout. However, the design currently reads as <strong>functional rather than aspirational</strong>. The minimalist aesthetic lacks the warmth and intentionality that modern guests seek. With strategic enhancements, your property can significantly increase its competitive positioning in your market.</p>
+            
+            <div class="situation-grid">
+                <div class="metric">
+                    <div class="metric-label">Spatial Flow & Layout</div>
+                    <div class="metric-value">18/25</div>
+                    <div class="metric-note">Strong bones, good walkways</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Lighting & Warmth</div>
+                    <div class="metric-value">5/20</div>
+                    <div class="metric-note">Primary opportunity area</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Sensory & Textiles</div>
+                    <div class="metric-value">6/20</div>
+                    <div class="metric-note">High-impact upgrade potential</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Power & Connectivity</div>
+                    <div class="metric-value">4/10</div>
+                    <div class="metric-note">Modern amenity enhancement</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Design Intentionality</div>
+                    <div class="metric-value">7/15</div>
+                    <div class="metric-note">Curation opportunity</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Professional Photography</div>
+                    <div class="metric-value">Impact Ready</div>
+                    <div class="metric-note">Post-improvements amplifier</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE 3: TOP 3 FIXES -->
+        <div class="page page-3">
+            <h2>🎯 Your Top 3 Strategic Enhancements</h2>
+            
+            <div class="fix-card">
+                <div class="fix-priority">PRIORITY 1 — PRIMARY FOCUS</div>
+                <div class="fix-title">Layered Textiles & Warmth Strategy</div>
+                <div class="fix-timeframe">Timeline: 1-2 weeks | Impact: Immediate perception shift</div>
+                <div class="fix-description">Your living room features a centered sofa that would benefit from visual grounding. Layer your bedroom with a textured throw and accent pillows to create depth and warmth. Add an 8x10 area rug with subtle pattern or warm tones to anchor your living space and create a sense of intentionality. These textile-based upgrades create a curated, aspirational feel while maintaining your minimalist aesthetic.</div>
+            </div>
+            
+            <div class="fix-card">
+                <div class="fix-priority">PRIORITY 2</div>
+                <div class="fix-title">Lighting Architecture Enhancement</div>
+                <div class="fix-timeframe">Timeline: 1-2 weeks | Impact: Transforms perceived warmth</div>
+                <div class="fix-description">Your bedroom currently relies on smaller bedside lamps. Upgrade to larger, statement-style lamps that provide better light distribution and create a more intentional, designed aesthetic. Consider adding a swag pendant or wall-mounted reading lamp above the bed for layered lighting. These upgrades shift perception from "functional" to "thoughtfully designed" without requiring major structural changes.</div>
+            </div>
+            
+            <div class="fix-card">
+                <div class="fix-priority">PRIORITY 3</div>
+                <div class="fix-title">Entry Refinement & Connectivity</div>
+                <div class="fix-timeframe">Timeline: 1 week | Impact: First impression optimization</div>
+                <div class="fix-description">Your entryway is compact but functional. A slim vertical shoe rack and elegant wall hooks will enhance both form and function without sacrificing your landing space. Add a USB outlet combo in your bedroom for modern guest convenience. These small but meaningful touches signal that your property is thoughtfully maintained and guest-focused.</div>
+            </div>
+        </div>
+
+        <!-- PAGE 4: PILLAR 1 - SPATIAL FLOW -->
+        <div class="page page-4 pillar-page">
+            <h2>Pillar 1: Spatial Flow & Layout Design</h2>
+            <div class="pillar-subtitle">Walkways, Access, Ergonomics, and Spatial Intention</div>
+            
+            <div class="pillar-score">Score: 18/25</div>
+            
+            <div class="pillar-analysis">
+                <div class="analysis-section">
+                    <div class="analysis-title">Walkway & Circulation (Strength)</div>
+                    <div class="analysis-content">
+                        <p>Your property offers generous walkways that allow guests to move freely throughout the space without feeling constrained. This is a significant strength that supports guest comfort and accessibility.</p>
+                    </div>
+                </div>
+                
+                <div class="analysis-section">
+                    <div class="analysis-title">Bed Access & Comfort (Strength)</div>
+                    <div class="analysis-content">
+                        <p>Both sides of your bed are accessible, with adequate space for guests to move comfortably. This supports the perception of a well-designed sleeping sanctuary.</p>
+                    </div>
+                </div>
+                
+                <div class="analysis-section">
+                    <div class="analysis-title">Floating Furniture Opportunity</div>
+                    <div class="analysis-content">
+                        <p>Your centered sofa positioning offers an opportunity to create intentional visual grounding. By adding an 8x10 area rug and positioning a console table strategically, you can enhance the sense of curated design while maintaining the open layout that guests appreciate.</p>
+                    </div>
+                </div>
+                
+                <div class="analysis-section">
+                    <div class="analysis-title">Entry Landing (Opportunity)</div>
+                    <div class="analysis-content">
+                        <p>Your entryway is compact. Rather than traditional console tables, a slim vertical shoe rack paired with elegant wall hooks will preserve your landing space while adding functional style. This approach honors your design principles while improving the guest experience.</p>
+                    </div>
+                </div>
+                
+                <div class="analysis-section">
+                    <div class="analysis-title">Nightstand Proportion</div>
+                    <div class="analysis-content">
+                        <p>Your current nightstands are minimal. Consider tables with slightly larger surface area to accommodate phones, glasses, and reading materials. This small upgrade significantly improves both functionality and perceived quality.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE 5: PILLAR 2 - LIGHTING -->
+        <div class="page page-5 pillar-page">
+            <h2>Pillar 2: Lighting & Optical Experience</h2>
+            <div class="pillar-subtitle">Brightness Distribution, Warmth, Layering, and Ambiance</div>
+            
+            <div class="pillar-score">Score: 5/20</div>
+            
+            <div class="pillar-analysis">
+                <div class="analysis-section">
+                    <div class="analysis-title">Current Lighting Architecture</div>
+                    <div class="analysis-content">
+                        <p>Your bedroom includes overhead recessed lighting plus bedside table lamps. However, the bedside lamps are relatively small in scale, which limits their visual presence and practical impact. The overhead lighting, while functional, creates a clinical ambiance rather than the warm, inviting feel that guests associate with premium accommodations.</p>
+                    </div>
+                </div>
+                
+                <div class="analysis-section">
+                    <div class="analysis-title">The Lighting Opportunity</div>
+                    <div class="analysis-content">
+                        <p>Upgrading to larger, statement-style bedside lamps will immediately shift the perceived quality and warmth of your bedroom. Consider adding a swag pendant or wall-mounted reading lamp to create layered lighting options. These upgrades don't require rewiring or major renovation—just thoughtful fixture selection.</p>
+                    </div>
+                </div>
+                
+                <div class="analysis-section">
+                    <div class="analysis-title">Color Temperature Consideration</div>
+                    <div class="analysis-content">
+                        <p>Ensure all lighting sources use warm color temperatures (2700-3000K). This consistency creates a cohesive, inviting environment that guests instinctively perceive as more luxurious and comfortable.</p>
+                    </div>
+                </div>
+                
+                <div class="analysis-section">
+                    <div class="analysis-title">Impact of Lighting Enhancement</div>
+                    <div class="analysis-content">
+                        <p>Lighting is the fastest and most impactful way to transform perceived value. Guests evaluate spaces largely through light quality. Strategic lighting upgrades signal that your property is professionally designed and attentively curated.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE 6: PILLAR 3 - SENSORY & TEXTILES -->
+        <div class="page page-6 pillar-page">
+            <h2>Pillar 3: Sensory Experience & Textile Strategy</h2>
+            <div class="pillar-subtitle">Texture, Material Quality, Warmth, and Tactile Comfort</div>
+            
+            <div class="pillar-score">Score: 6/20</div>
+            
+            <div class="pillar-analysis">
+                <div class="analysis-section">
+                    <div class="analysis-title">Current Aesthetic Assessment</div>
+                    <div class="analysis-content">
+                        <p>Your property features a minimalist black, white, and gray palette. While clean and modern, this monochromatic approach can read as austere rather than warm. Guests increasingly seek spaces that balance design sophistication with sensory comfort.</p>
+                    </div>
+                </div>
+                
+                <div class="analysis-section">
+                    <div class="analysis-title">The Textile Enhancement Strategy</div>
+                    <div class="analysis-content">
+                        <p>Layer your existing bedding with a textured throw blanket and 2-3 accent pillows in colors of your choice. This approach adds visual depth, tactile comfort, and warmth without altering your core design philosophy. The addition of an 8x10 area rug with pattern or warm tones will ground your living space and create intentional visual warmth.</p>
+                    </div>
+                </div>
+                
+                <div class="analysis-section">
+                    <div class="analysis-title">Material Quality Perception</div>
+                    <div class="analysis-content">
+                        <p>Your bedding is functional and clean. Focus on upgrading textiles through throws and pillows rather than wholesale bedding replacement. Select materials that feel luxurious—linens, quality cotton blends, or linen-cotton combinations—to signal premium quality.</p>
+                    </div>
+                </div>
+                
+                <div class="analysis-section">
+                    <div class="analysis-title">The Power of Warmth Injection</div>
+                    <div class="analysis-content">
+                        <p>Adding warmth through carefully selected textiles is the single most cost-effective way to shift guest perception from "clean and minimal" to "thoughtfully curated luxury." This is not decoration—it's strategic design that directly impacts booking appeal and guest satisfaction.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE 7: PILLARS 4 & 5 -->
+        <div class="page page-7 pillar-page">
+            <h2>Pillars 4 & 5: Connectivity & Design Intent</h2>
+            
+            <div style="margin-bottom: 40px;">
+                <h3 style="color: #667eea; font-size: 20px; margin-bottom: 15px;">Pillar 4: Power, Connectivity & Amenities (Score: 4/10)</h3>
+                <div class="pillar-analysis">
+                    <div class="analysis-section">
+                        <div class="analysis-title">Modern Guest Expectations</div>
+                        <div class="analysis-content">
+                            <p>Contemporary guests expect convenient device charging within arm's reach of the bed. Currently, your bedside areas lack USB access, requiring guests to navigate standard outlets or use adapters.</p>
+                        </div>
+                    </div>
+                    <div class="analysis-section">
+                        <div class="analysis-title">Simple Solution</div>
+                        <div class="analysis-content">
+                            <p>Install a USB outlet combo on one bedroom nightstand. This small investment removes friction from the guest experience and signals that your property anticipates and accommodates modern needs.</p>
+                        </div>
+                    </div>
+                    <div class="analysis-section">
+                        <div class="analysis-title">Cable Management (Positive Note)</div>
+                        <div class="analysis-content">
+                            <p>Your TV installation is clean with well-hidden cabling. This attention to detail reinforces the perception of a well-maintained property.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div>
+                <h3 style="color: #667eea; font-size: 20px; margin-bottom: 15px;">Pillar 5: Design Intentionality & Curation (Score: 7/15)</h3>
+                <div class="pillar-analysis">
+                    <div class="analysis-section">
+                        <div class="analysis-title">Current Design Narrative</div>
+                        <div class="analysis-content">
+                            <p>Your property reads as "functionally arranged" rather than "intentionally curated." While everything has a purpose, the space lacks the small gestures that signal thoughtful hospitality.</p>
+                        </div>
+                    </div>
+                    <div class="analysis-section">
+                        <div class="analysis-title">Intentionality Opportunities</div>
+                        <div class="analysis-content">
+                            <p>Small touches create outsized impact: a potted plant in the bedroom or living area, a single piece of wall art, a carefully selected throw blanket, or a small decorative object on the nightstand. These elements cost little but communicate that your property has been thoughtfully designed with guests in mind.</p>
+                        </div>
+                    </div>
+                    <div class="analysis-section">
+                        <div class="analysis-title">The Curation Shift</div>
+                        <div class="analysis-content">
+                            <p>Moving from "assembled" to "curated" perception is fundamentally about signaling that design choices are intentional. This shift often has disproportionate impact on guest satisfaction and booking desirability.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE 8: SHOPPING LIST & CTA -->
+        <div class="page page-8">
+            <h2>🛒 Strategic Enhancement Roadmap</h2>
+            
+            <div class="shopping-tier">
+                <div class="tier-name">Priority 1: Textile Foundation (Immediate Impact)</div>
+                <ul class="shopping-list">
+                    <li class="shopping-item"><strong>Textured Throw Blanket:</strong> High-quality linen or cotton blend <span class="note">Warmth</span></li>
+                    <li class="shopping-item"><strong>Accent Pillows (2-3):</strong> Colors of your choice for visual depth <span class="note">Personality</span></li>
+                    <li class="shopping-item"><strong>Area Rug (8x10):</strong> Pattern or warm tone for visual grounding <span class="note">Anchoring</span></li>
+                </ul>
+            </div>
+            
+            <div class="shopping-tier">
+                <div class="tier-name">Priority 2: Lighting Enhancement (Warmth & Scale)</div>
+                <ul class="shopping-list">
+                    <li class="shopping-item"><strong>Statement Bedside Lamp:</strong> Larger scale, warm temperature <span class="note">Upgrade</span></li>
+                    <li class="shopping-item"><strong>Pendant or Wall-Mounted Reading Light:</strong> Layered ambiance option <span class="note">Intentional</span></li>
+                    <li class="shopping-item"><strong>Warm Bulbs (2700-3000K):</strong> Replace cool-white options throughout <span class="note">Cohesion</span></li>
+                </ul>
+            </div>
+            
+            <div class="shopping-tier">
+                <div class="tier-name">Priority 3: Entry & Connectivity (Guest Focus)</div>
+                <ul class="shopping-list">
+                    <li class="shopping-item"><strong>Slim Vertical Shoe Rack:</strong> Functional without space sacrifice <span class="note">Design</span></li>
+                    <li class="shopping-item"><strong>Elegant Wall Hooks (2x):</strong> Refined hardware finish <span class="note">Welcome</span></li>
+                    <li class="shopping-item"><strong>USB Outlet Combo:</strong> Modern convenience on nightstand <span class="note">Amenity</span></li>
+                </ul>
+            </div>
+            
+            <div class="shopping-tier">
+                <div class="tier-name">Priority 4: Intentionality Touches (Curation)</div>
+                <ul class="shopping-list">
+                    <li class="shopping-item"><strong>Potted Plant:</strong> Bedroom or living area greenery <span class="note">Life</span></li>
+                    <li class="shopping-item"><strong>Wall Art or Print:</strong> Single statement piece <span class="note">Narrative</span></li>
+                    <li class="shopping-item"><strong>Decorative Nightstand Object:</strong> Intentional styling <span class="note">Detail</span></li>
+                </ul>
+            </div>
+            
+            <div class="insight-box" style="margin: 30px 0;">
+                <strong>IMPLEMENTATION INSIGHT:</strong> These enhancements work synergistically. Textile warmth + upgraded lighting + intentional touches create a perception shift that significantly exceeds the sum of individual improvements. Implementing these strategically positions your property for increased competitiveness in your local market and improved guest satisfaction metrics.
+            </div>
+            
+            <div class="cta-section">
+                <h3>Ready to Elevate Your Property?</h3>
+                <p>Your Leduc property has excellent bones and strong positioning. These strategic enhancements will amplify your competitive advantage and create a guest experience that drives satisfaction, repeat bookings, and premium pricing.</p>
+                <p><strong>Next Step:</strong> Schedule a consultation with our design strategist to prioritize these recommendations based on your timeline, budget, and goals. We'll help you sequence these enhancements for maximum impact.</p>
+                <a href="mailto:design@roomsbyrachel.com?subject=Leduc%20Property%20Consultation" class="cta-button">Schedule a Strategy Session</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
